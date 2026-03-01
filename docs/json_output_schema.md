@@ -26,7 +26,8 @@ All commands can return this payload on failure:
   "index_path": "string",
   "docs_count": 0,
   "sections_count": 0,
-  "source_hash": "sha256:..."
+  "source_hash": "sha256:...",
+  "source_manifest_path": "optional absolute path"
 }
 ```
 
@@ -42,6 +43,7 @@ All commands can return this payload on failure:
   "symbols_detected": 0,
   "routes_detected": 0,
   "env_vars_detected": 0,
+  "signals_detected": 0,
   "index_path": "string",
   "manifest_path": "string",
   "docs_count": 0,
@@ -78,7 +80,76 @@ All commands can return this payload on failure:
   "code_blocks_count": 0,
   "sections_per_doc": 0,
   "built_at": "ISO-8601 timestamp",
-  "source_hash": "sha256:..."
+  "source_hash": "sha256:...",
+  "inferred": false,
+  "derivation": "optional string",
+  "source": {
+    "source_type": "string",
+    "provider": "string",
+    "canonical_url": "string",
+    "requested_ref": "string",
+    "resolved_ref": "string",
+    "integrity": "string",
+    "fetched_at": "ISO-8601 timestamp",
+    "snapshot_dir": "string",
+    "docs_dir": "string",
+    "trust_signals": {}
+  }
+}
+```
+
+## `discover`
+
+```json
+{
+  "query": "string",
+  "provider": "all|catalog|npm|github",
+  "ecosystem": "string",
+  "candidates": [
+    {
+      "name": "string",
+      "selector": "string",
+      "source_type": "registry|github|docs|catalog",
+      "ecosystem": "string",
+      "canonical_url": "string",
+      "description": "string",
+      "versions": ["string"],
+      "trust_score": 0,
+      "benchmark_score": 0,
+      "confidence": 0
+    }
+  ]
+}
+```
+
+## `fetch`
+
+```json
+{
+  "ok": true,
+  "selector": "string",
+  "library": "string",
+  "version": "string",
+  "source_type": "registry|github|docs|local",
+  "canonical_url": "string",
+  "requested_ref": "string",
+  "resolved_ref": "string",
+  "integrity": "string",
+  "snapshot_dir": "string",
+  "docs_dir": "string",
+  "source_manifest_path": "string",
+  "files_copied": 0,
+  "total_bytes": 0,
+  "trust_signals": {
+    "suspicious_count": 0,
+    "suspicious_files": [
+      {
+        "path": "string",
+        "patterns": ["regex-source"]
+      }
+    ]
+  },
+  "cache_hit": false
 }
 ```
 
@@ -117,7 +188,15 @@ All commands can return this payload on failure:
   "code_blocks": ["string"],
   "source_path": "string",
   "line_start": 0,
-  "line_end": 0
+  "line_end": 0,
+  "provenance": {
+    "source_type": "string",
+    "provider": "string",
+    "canonical_url": "string",
+    "requested_ref": "string",
+    "resolved_ref": "string",
+    "fetched_at": "ISO-8601 timestamp"
+  }
 }
 ```
 
@@ -157,6 +236,12 @@ All commands can return this payload on failure:
   ],
   "snippet": "string",
   "citations": ["citation_id"],
+  "citation_details": [
+    {
+      "citation_id": "string",
+      "provenance": {}
+    }
+  ],
   "related_docs": ["doc_id"]
 }
 ```
@@ -164,3 +249,4 @@ All commands can return this payload on failure:
 Notes:
 - Optional fields may be omitted when no signal is available.
 - Numeric scores are relative relevance/confidence and not calibrated probabilities.
+- When an index is bootstrap-derived (`build.inferred=true`), `use` returns overall `"confidence": "partial"` even when step-level scores are present.

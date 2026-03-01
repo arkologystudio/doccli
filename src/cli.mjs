@@ -6,6 +6,8 @@ import {
   runBootstrap,
   runBuild,
   runCite,
+  runDiscover,
+  runFetch,
   runList,
   runOpen,
   runSearch,
@@ -19,9 +21,11 @@ function usage() {
     "",
     "Usage:",
     "  doccli bootstrap --src <dir> --library <name> --version <semver> [--docs-out <dir>] [--out <file>] [--emit-manifest] [--manifest-out <file>] [--json]",
-    "  doccli build --src <dir> --library <name> --version <semver> [--out <file>] [--json]",
+    "  doccli build --src <dir> --library <name> --version <semver> [--source-manifest <file>] [--out <file>] [--json]",
     "  doccli list [--index <file>] [--json]",
     "  doccli stats [--index <file>] [--json]",
+    "  doccli discover <query> [--provider <all|catalog|npm|github>] [--catalog <file>] [--ecosystem <name>] [--max-results <n>] [--json]",
+    "  doccli fetch <selector> [--version <semver>] [--ref <git-ref>] [--out <dir>] [--cache-dir <dir>] [--policy <file>] [--json]",
     "  doccli search <query> [--index <file>] [--max-results <n>] [--json]",
     "  doccli open <doc_id#anchor> [--index <file>] [--max-chars <n>] [--json]",
     "  doccli cite <doc_id#anchor> [--index <file>] [--json]",
@@ -34,6 +38,9 @@ function printHuman(command, payload) {
     console.log(`Built index: ${payload.index_path}`);
     console.log(`Docs: ${payload.docs_count}, sections: ${payload.sections_count}`);
     console.log(`Source hash: ${payload.source_hash}`);
+    if (payload.source_manifest_path) {
+      console.log(`Source manifest: ${payload.source_manifest_path}`);
+    }
     return;
   }
 
@@ -55,6 +62,31 @@ function printHuman(command, payload) {
     }
     for (const result of payload.results) {
       console.log(`- [${result.score}] ${result.doc_id}#${result.anchor} :: ${result.heading}`);
+    }
+    return;
+  }
+
+  if (command === "discover") {
+    console.log(`Discovery results for "${payload.query}" (${payload.provider}):`);
+    if (!Array.isArray(payload.candidates) || payload.candidates.length === 0) {
+      console.log("No candidates found.");
+      return;
+    }
+    for (const candidate of payload.candidates) {
+      console.log(
+        `- [${candidate.confidence}] ${candidate.name} (${candidate.source_type}) -> ${candidate.selector}`
+      );
+    }
+    return;
+  }
+
+  if (command === "fetch") {
+    console.log(`Fetched ${payload.library}@${payload.version}`);
+    console.log(`Source: ${payload.canonical_url}`);
+    console.log(`Docs dir: ${payload.docs_dir}`);
+    console.log(`Manifest: ${payload.source_manifest_path}`);
+    if (payload.cache_hit) {
+      console.log("Cache: hit");
     }
     return;
   }
@@ -167,7 +199,7 @@ function handleError(error, asJson) {
   process.exit(exitCode);
 }
 
-function main() {
+async function main() {
   const argv = process.argv.slice(2);
   const command = argv[0];
   if (!command || command === "--help" || command === "-h") {
@@ -189,6 +221,10 @@ function main() {
       payload = runBootstrap(parsed.flags);
     } else if (command === "build") {
       payload = runBuild(parsed.flags);
+    } else if (command === "discover") {
+      payload = await runDiscover(parsed.positionals, parsed.flags);
+    } else if (command === "fetch") {
+      payload = await runFetch(parsed.positionals, parsed.flags);
     } else if (command === "search") {
       payload = runSearch(parsed.positionals, parsed.flags);
     } else if (command === "list") {
@@ -220,4 +256,6 @@ function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  handleError(error, false);
+});

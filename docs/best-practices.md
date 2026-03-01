@@ -9,6 +9,9 @@ Optimization tips and decision guide for using doccli effectively.
 ```
 Need documentation info?
 │
+├─ Library not installed yet?
+│  └─> doccli discover "<library>" → doccli fetch "<selector>" → doccli build --source-manifest ...
+│
 ├─ Want to know what's available?
 │  └─> doccli stats / doccli list
 │
@@ -33,6 +36,7 @@ Need documentation info?
 |----------|-------------|-----|
 | "What docs are available?" | `list` | Shows complete inventory |
 | "How comprehensive is the documentation?" | `stats` | Gives overview metrics |
+| "Library is unknown/not installed" | `discover` + `fetch` | Acquire docs snapshot first |
 | "Where is the auth documentation?" | `search "auth"` | Fast keyword lookup |
 | "How do I set up OAuth?" | `use "MyProject" "How to set up OAuth?"` | Task-specific guidance |
 | "I need the exact deployment steps" | `open "docs/deploy#steps"` | Full content access |

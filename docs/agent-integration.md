@@ -45,6 +45,17 @@ doccli is designed specifically for AI agents. This guide shows you how to integ
 └─────────────────┘
 ```
 
+### Optional External Research Path
+
+For unknown libraries, add an acquisition phase before query:
+
+1. `doccli discover "<library>" ...`
+2. `doccli fetch "<selector>" ...`
+3. `doccli build --source-manifest ...`
+4. `doccli use ...`
+
+This keeps citations tied to pinned external refs (`resolved_ref`) and preserves provenance in JSON outputs.
+
 ## Basic Integration Pattern
 
 ### 1. Discovery Phase
@@ -115,6 +126,7 @@ response = query_documentation("MyProject", task, "/path/to/project")
 # - response['confidence']: 'authoritative' or 'partial'
 # - response['steps']: List of citation-backed steps
 # - response['related_docs']: Docs for deeper exploration
+# - response['citation_details']: Optional provenance per citation
 ```
 
 ### 3. Execution Phase

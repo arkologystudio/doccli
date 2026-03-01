@@ -15,8 +15,49 @@ const CODE_EXTENSIONS = new Set([
   ".rs"
 ]);
 
-function walkCodeFiles(rootDir) {
-  const output = [];
+const IGNORED_DIRECTORIES = new Set([
+  "node_modules",
+  ".git",
+  ".doccli",
+  "dist",
+  "build",
+  "coverage",
+  "vendor",
+  ".next",
+  "out",
+  "target",
+  "venv",
+  ".venv",
+  "__pycache__"
+]);
+
+const IMPLICIT_DOC_FILES = new Set([
+  "package.json",
+  "pyproject.toml",
+  "requirements.txt",
+  "makefile",
+  "dockerfile",
+  "docker-compose.yml",
+  "docker-compose.yaml",
+  "procfile"
+]);
+
+function isIgnoredDirectory(name) {
+  return IGNORED_DIRECTORIES.has(name.toLowerCase());
+}
+
+function isMinifiedFile(name) {
+  return /\.min\.(js|mjs|cjs|css)$/i.test(name);
+}
+
+function isWorkflowFile(filePath) {
+  const normalized = filePath.split(path.sep).join("/").toLowerCase();
+  return normalized.includes("/.github/workflows/") && /\.(yml|yaml)$/.test(normalized);
+}
+
+function walkSourceFiles(rootDir) {
+  const codeFiles = [];
+  const implicitFiles = [];
   const stack = [rootDir];
 
   while (stack.length > 0) {
@@ -25,7 +66,7 @@ function walkCodeFiles(rootDir) {
     entries.sort((left, right) => left.name.localeCompare(right.name));
 
     for (const entry of entries) {
-      if (entry.name === "node_modules" || entry.name === ".git" || entry.name === ".doccli") {
+      if (entry.isDirectory() && isIgnoredDirectory(entry.name)) {
         continue;
       }
 
@@ -35,19 +76,25 @@ function walkCodeFiles(rootDir) {
         continue;
       }
 
-      if (!entry.isFile()) {
+      if (!entry.isFile() || isMinifiedFile(entry.name)) {
         continue;
       }
 
       const extension = path.extname(entry.name).toLowerCase();
       if (CODE_EXTENSIONS.has(extension)) {
-        output.push(fullPath);
+        codeFiles.push(fullPath);
+      }
+
+      const lowered = entry.name.toLowerCase();
+      if (IMPLICIT_DOC_FILES.has(lowered) || isWorkflowFile(fullPath)) {
+        implicitFiles.push(fullPath);
       }
     }
   }
 
-  output.sort((left, right) => left.localeCompare(right));
-  return output;
+  codeFiles.sort((left, right) => left.localeCompare(right));
+  implicitFiles.sort((left, right) => left.localeCompare(right));
+  return { codeFiles, implicitFiles };
 }
 
 function lineNumberFromIndex(text, index) {
@@ -60,6 +107,20 @@ function extractWithRegex(content, regex, mapper) {
   while (match) {
     output.push(mapper(match));
     match = regex.exec(content);
+  }
+  return output;
+}
+
+function stableUniqueBy(items, keyBuilder) {
+  const seen = new Set();
+  const output = [];
+  for (const item of items) {
+    const key = keyBuilder(item);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    output.push(item);
   }
   return output;
 }
@@ -139,71 +200,269 @@ function extractSymbols(extension, content) {
 }
 
 function extractEnvVars(content) {
-  const regexes = [
+  const patterns = [
     /\bprocess\.env\.([A-Z][A-Z0-9_]{1,})\b/g,
+    /\bprocess\.env\[\s*["']([A-Z][A-Z0-9_]{1,})["']\s*\]/g,
+    /\bimport\.meta\.env\.([A-Z][A-Z0-9_]{1,})\b/g,
     /\bos\.getenv\(\s*["']([A-Z][A-Z0-9_]{1,})["']\s*\)/g,
     /\bstd::env::var\(\s*["']([A-Z][A-Z0-9_]{1,})["']\s*\)/g,
-    /\bgetenv\(\s*["']([A-Z][A-Z0-9_]{1,})["']\s*\)/g
+    /\bgetenv\(\s*["']([A-Z][A-Z0-9_]{1,})["']\s*\)/g,
+    /\bDeno\.env\.get\(\s*["']([A-Z][A-Z0-9_]{1,})["']\s*\)/g,
+    /\bos\.Getenv\(\s*"([A-Z][A-Z0-9_]{1,})"\s*\)/g
   ];
-  const found = new Set();
-  for (const regex of regexes) {
-    let match = regex.exec(content);
+
+  const matches = [];
+  for (const pattern of patterns) {
+    let match = pattern.exec(content);
     while (match) {
-      found.add(match[1]);
-      match = regex.exec(content);
+      matches.push({
+        name: match[1],
+        line: lineNumberFromIndex(content, match.index)
+      });
+      match = pattern.exec(content);
     }
   }
-  return Array.from(found).sort((left, right) => left.localeCompare(right));
+
+  return stableUniqueBy(matches, (entry) => `${entry.name}:${entry.line}`).sort((left, right) => {
+    if (left.name !== right.name) {
+      return left.name.localeCompare(right.name);
+    }
+    return left.line - right.line;
+  });
 }
 
 function extractRoutes(content) {
   const routes = [];
+
+  const addRoute = (method, routePath, index) => {
+    if (!method || !routePath) {
+      return;
+    }
+    routes.push({
+      route: `${String(method).toUpperCase()} ${routePath}`,
+      line: lineNumberFromIndex(content, index)
+    });
+  };
+
   const expressRegex = /\b(?:app|router)\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)["'`]/g;
   let match = expressRegex.exec(content);
   while (match) {
-    routes.push(`${match[1].toUpperCase()} ${match[2]}`);
+    addRoute(match[1], match[2], match.index);
     match = expressRegex.exec(content);
   }
 
-  const fastApiRegex = /@app\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']/g;
+  const fastApiRegex = /@(?:app|router)\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)["'`]/g;
   match = fastApiRegex.exec(content);
   while (match) {
-    routes.push(`${match[1].toUpperCase()} ${match[2]}`);
+    addRoute(match[1], match[2], match.index);
     match = fastApiRegex.exec(content);
   }
 
-  return Array.from(new Set(routes)).sort((left, right) => left.localeCompare(right));
+  const flaskRouteRegex = /@(?:app|bp|blueprint)\.route\(\s*["'`]([^"'`]+)["'`](?:\s*,\s*methods\s*=\s*\[([^\]]+)\])?/g;
+  match = flaskRouteRegex.exec(content);
+  while (match) {
+    if (match[2]) {
+      const methods = Array.from(match[2].matchAll(/["'`]([A-Za-z]+)["'`]/g)).map((item) => item[1]);
+      if (methods.length > 0) {
+        for (const method of methods) {
+          addRoute(method, match[1], match.index);
+        }
+      } else {
+        addRoute("GET", match[1], match.index);
+      }
+    } else {
+      addRoute("GET", match[1], match.index);
+    }
+    match = flaskRouteRegex.exec(content);
+  }
+
+  const ginRegex = /\.(GET|POST|PUT|PATCH|DELETE)\(\s*"([^"]+)"/g;
+  match = ginRegex.exec(content);
+  while (match) {
+    addRoute(match[1], match[2], match.index);
+    match = ginRegex.exec(content);
+  }
+
+  return stableUniqueBy(routes, (entry) => `${entry.route}:${entry.line}`).sort((left, right) => {
+    if (left.route !== right.route) {
+      return left.route.localeCompare(right.route);
+    }
+    return left.line - right.line;
+  });
 }
 
-function buildMarkdown(library, codeFiles, extracted) {
+function extractImplicitSignals(filePath, content) {
+  const signals = [];
+  const fileName = path.basename(filePath).toLowerCase();
+
+  if (fileName === "package.json") {
+    try {
+      const parsed = JSON.parse(content);
+      const scripts = parsed && typeof parsed.scripts === "object" ? Object.keys(parsed.scripts) : [];
+      const dependencies = parsed && typeof parsed.dependencies === "object" ? Object.keys(parsed.dependencies) : [];
+
+      for (const script of scripts.sort((left, right) => left.localeCompare(right))) {
+        signals.push({ kind: "script", value: `npm run ${script}`, line: 1 });
+      }
+      for (const dependency of dependencies.sort((left, right) => left.localeCompare(right)).slice(0, 12)) {
+        signals.push({ kind: "dependency", value: dependency, line: 1 });
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  if (fileName === "makefile") {
+    const targetRegex = /^([A-Za-z0-9_.-]+)\s*:/gm;
+    let match = targetRegex.exec(content);
+    while (match) {
+      if (!match[1].startsWith(".")) {
+        signals.push({
+          kind: "make-target",
+          value: match[1],
+          line: lineNumberFromIndex(content, match.index)
+        });
+      }
+      match = targetRegex.exec(content);
+    }
+  }
+
+  if (fileName === "dockerfile") {
+    const patterns = ["FROM", "EXPOSE", "CMD", "ENTRYPOINT", "HEALTHCHECK"];
+    for (const directive of patterns) {
+      const regex = new RegExp(`^${directive}\\s+(.+)$`, "gim");
+      let match = regex.exec(content);
+      while (match) {
+        signals.push({
+          kind: "docker",
+          value: `${directive} ${match[1].trim()}`,
+          line: lineNumberFromIndex(content, match.index)
+        });
+        match = regex.exec(content);
+      }
+    }
+  }
+
+  if (fileName === "requirements.txt") {
+    const requirementsRegex = /^\s*([A-Za-z0-9_.-]+)(?:[<>=!~]=.+)?\s*$/gm;
+    let match = requirementsRegex.exec(content);
+    while (match) {
+      if (match[1]) {
+        signals.push({
+          kind: "dependency",
+          value: match[1],
+          line: lineNumberFromIndex(content, match.index)
+        });
+      }
+      match = requirementsRegex.exec(content);
+    }
+  }
+
+  if (fileName === "pyproject.toml") {
+    const nameRegex = /^\s*name\s*=\s*["']([^"']+)["']\s*$/gm;
+    const runtimeRegex = /^\s*requires-python\s*=\s*["']([^"']+)["']\s*$/gm;
+    let match = nameRegex.exec(content);
+    while (match) {
+      signals.push({
+        kind: "project",
+        value: match[1],
+        line: lineNumberFromIndex(content, match.index)
+      });
+      match = nameRegex.exec(content);
+    }
+
+    match = runtimeRegex.exec(content);
+    while (match) {
+      signals.push({
+        kind: "runtime",
+        value: `python ${match[1]}`,
+        line: lineNumberFromIndex(content, match.index)
+      });
+      match = runtimeRegex.exec(content);
+    }
+  }
+
+  if (isWorkflowFile(filePath)) {
+    const runRegex = /^\s*-\s*run:\s*(.+)$/gm;
+    let match = runRegex.exec(content);
+    while (match) {
+      signals.push({
+        kind: "ci-run",
+        value: match[1].trim(),
+        line: lineNumberFromIndex(content, match.index)
+      });
+      match = runRegex.exec(content);
+    }
+  }
+
+  return stableUniqueBy(signals, (entry) => `${entry.kind}:${entry.value}:${entry.line}`);
+}
+
+function addLocation(indexMap, key, sourcePath, line) {
+  if (!indexMap.has(key)) {
+    indexMap.set(key, []);
+  }
+  indexMap.get(key).push({ sourcePath, line });
+}
+
+function formatLocations(locations, maxEntries = 3) {
+  const unique = stableUniqueBy(locations, (entry) => `${entry.sourcePath}:${entry.line}`)
+    .sort((left, right) => {
+      if (left.sourcePath !== right.sourcePath) {
+        return left.sourcePath.localeCompare(right.sourcePath);
+      }
+      return left.line - right.line;
+    });
+  const shown = unique.slice(0, maxEntries).map((entry) => `${entry.sourcePath}:${entry.line}`);
+  const remainder = unique.length - shown.length;
+  if (remainder > 0) {
+    shown.push(`+${remainder} more`);
+  }
+  return shown.join(", ");
+}
+
+function buildMarkdown(library, scannedFilesCount, extracted) {
   const lines = [];
   lines.push(`# ${library} Bootstrap Docs`);
   lines.push("");
-  lines.push("This documentation is generated from source code.");
+  lines.push("This documentation is generated from source code and runtime/tooling artifacts.");
   lines.push("Confidence: partial (derived/inferred).");
   lines.push("");
   lines.push("## Summary");
   lines.push("");
-  lines.push(`- Source files scanned: ${codeFiles.length}`);
+  lines.push(`- Source files scanned: ${scannedFilesCount}`);
   lines.push(`- Symbols detected: ${extracted.totalSymbols}`);
   lines.push(`- Routes detected: ${extracted.totalRoutes}`);
   lines.push(`- Environment vars detected: ${extracted.totalEnvVars}`);
+  lines.push(`- Runtime/tooling signals detected: ${extracted.totalSignals}`);
   lines.push("");
 
-  if (extracted.totalEnvVars > 0) {
+  if (extracted.envVars.size > 0) {
     lines.push("## Environment Variables");
     lines.push("");
-    for (const envVar of extracted.envVars) {
-      lines.push(`- \`${envVar}\``);
+    const names = Array.from(extracted.envVars.keys()).sort((left, right) => left.localeCompare(right));
+    for (const name of names) {
+      lines.push(`- \`${name}\` (${formatLocations(extracted.envVars.get(name))})`);
     }
     lines.push("");
   }
 
-  if (extracted.totalRoutes > 0) {
+  if (extracted.routes.size > 0) {
     lines.push("## Routes");
     lines.push("");
-    for (const route of extracted.routes) {
-      lines.push(`- ${route}`);
+    const routeList = Array.from(extracted.routes.keys()).sort((left, right) => left.localeCompare(right));
+    for (const route of routeList) {
+      lines.push(`- ${route} (${formatLocations(extracted.routes.get(route))})`);
+    }
+    lines.push("");
+  }
+
+  if (extracted.signals.size > 0) {
+    lines.push("## Runtime and Tooling Signals");
+    lines.push("");
+    const signalList = Array.from(extracted.signals.keys()).sort((left, right) => left.localeCompare(right));
+    for (const signal of signalList) {
+      lines.push(`- ${signal} (${formatLocations(extracted.signals.get(signal))})`);
     }
     lines.push("");
   }
@@ -215,12 +474,14 @@ function buildMarkdown(library, codeFiles, extracted) {
     if (
       fileResult.symbols.length === 0 &&
       fileResult.routes.length === 0 &&
-      fileResult.envVars.length === 0
+      fileResult.envVars.length === 0 &&
+      fileResult.signals.length === 0
     ) {
       continue;
     }
     lines.push(`### ${fileResult.sourcePath}`);
     lines.push("");
+
     if (fileResult.symbols.length > 0) {
       lines.push("Functions and classes:");
       lines.push("");
@@ -229,25 +490,44 @@ function buildMarkdown(library, codeFiles, extracted) {
       }
       lines.push("");
     }
+
     if (fileResult.routes.length > 0) {
       lines.push("Routes:");
       lines.push("");
       for (const route of fileResult.routes) {
-        lines.push(`- ${route}`);
+        lines.push(`- ${route.route} (line ${route.line})`);
       }
       lines.push("");
     }
+
     if (fileResult.envVars.length > 0) {
       lines.push("Environment variables:");
       lines.push("");
       for (const envVar of fileResult.envVars) {
-        lines.push(`- \`${envVar}\``);
+        lines.push(`- \`${envVar.name}\` (line ${envVar.line})`);
+      }
+      lines.push("");
+    }
+
+    if (fileResult.signals.length > 0) {
+      lines.push("Operational signals:");
+      lines.push("");
+      for (const signal of fileResult.signals) {
+        lines.push(`- ${signal.kind}: \`${signal.value}\` (line ${signal.line})`);
       }
       lines.push("");
     }
   }
 
   return `${lines.join("\n").trim()}\n`;
+}
+
+function readTextFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch {
+    return "";
+  }
 }
 
 export function generateBootstrapDocs({ srcDir, docsOutDir, library }) {
@@ -261,9 +541,9 @@ export function generateBootstrapDocs({ srcDir, docsOutDir, library }) {
   }
 
   const absoluteSrc = path.resolve(srcDir);
-  const codeFiles = walkCodeFiles(absoluteSrc);
+  const { codeFiles, implicitFiles } = walkSourceFiles(absoluteSrc);
   const existingMarkdown = walkMarkdownFiles(absoluteSrc);
-  if (codeFiles.length === 0 && existingMarkdown.length === 0) {
+  if (codeFiles.length === 0 && implicitFiles.length === 0 && existingMarkdown.length === 0) {
     throw new CliError(
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
@@ -274,46 +554,85 @@ export function generateBootstrapDocs({ srcDir, docsOutDir, library }) {
 
   const extracted = {
     files: [],
-    envVars: new Set(),
-    routes: new Set(),
+    envVars: new Map(),
+    routes: new Map(),
+    signals: new Map(),
     totalSymbols: 0,
     totalRoutes: 0,
-    totalEnvVars: 0
+    totalEnvVars: 0,
+    totalSignals: 0
   };
 
   for (const filePath of codeFiles) {
-    const content = fs.readFileSync(filePath, "utf8");
+    const content = readTextFile(filePath);
+    if (!content) {
+      continue;
+    }
+
     const extension = path.extname(filePath).toLowerCase();
+    const sourcePath = projectRelativePath(filePath);
     const symbols = extractSymbols(extension, content);
     const envVars = extractEnvVars(content);
     const routes = extractRoutes(content);
+
     extracted.totalSymbols += symbols.length;
     extracted.totalRoutes += routes.length;
     extracted.totalEnvVars += envVars.length;
+
     for (const envVar of envVars) {
-      extracted.envVars.add(envVar);
+      addLocation(extracted.envVars, envVar.name, sourcePath, envVar.line);
     }
     for (const route of routes) {
-      extracted.routes.add(route);
+      addLocation(extracted.routes, route.route, sourcePath, route.line);
     }
+
     extracted.files.push({
-      sourcePath: projectRelativePath(filePath),
+      sourcePath,
       symbols,
       envVars,
-      routes
+      routes,
+      signals: []
+    });
+  }
+
+  for (const filePath of implicitFiles) {
+    const content = readTextFile(filePath);
+    if (!content) {
+      continue;
+    }
+
+    const sourcePath = projectRelativePath(filePath);
+    const signals = extractImplicitSignals(filePath, content);
+    if (signals.length === 0) {
+      continue;
+    }
+
+    extracted.totalSignals += signals.length;
+    for (const signal of signals) {
+      addLocation(extracted.signals, `${signal.kind}: ${signal.value}`, sourcePath, signal.line);
+    }
+
+    const existingFile = extracted.files.find((entry) => entry.sourcePath === sourcePath);
+    if (existingFile) {
+      existingFile.signals = stableUniqueBy(existingFile.signals.concat(signals), (entry) =>
+        `${entry.kind}:${entry.value}:${entry.line}`
+      );
+      continue;
+    }
+
+    extracted.files.push({
+      sourcePath,
+      symbols: [],
+      envVars: [],
+      routes: [],
+      signals
     });
   }
 
   extracted.files.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
 
-  const markdown = buildMarkdown(library, codeFiles, {
-    files: extracted.files,
-    envVars: Array.from(extracted.envVars).sort((left, right) => left.localeCompare(right)),
-    routes: Array.from(extracted.routes).sort((left, right) => left.localeCompare(right)),
-    totalSymbols: extracted.totalSymbols,
-    totalRoutes: extracted.totalRoutes,
-    totalEnvVars: extracted.totalEnvVars
-  });
+  const uniqueScannedFiles = new Set([...codeFiles, ...implicitFiles]);
+  const markdown = buildMarkdown(library, uniqueScannedFiles.size, extracted);
 
   const docsFile = path.resolve(docsOutDir, "bootstrap.md");
   ensureDirForFile(docsFile);
@@ -322,9 +641,10 @@ export function generateBootstrapDocs({ srcDir, docsOutDir, library }) {
   return {
     docs_dir: path.resolve(docsOutDir),
     docs_file: docsFile,
-    source_files_scanned: codeFiles.length,
+    source_files_scanned: uniqueScannedFiles.size,
     symbols_detected: extracted.totalSymbols,
     routes_detected: extracted.totalRoutes,
-    env_vars_detected: extracted.totalEnvVars
+    env_vars_detected: extracted.totalEnvVars,
+    signals_detected: extracted.totalSignals
   };
 }

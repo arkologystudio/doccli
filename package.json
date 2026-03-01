@@ -1,16 +1,51 @@
 {
   "name": "doccli",
   "version": "0.1.0",
-  "description": "Local-first CLI for agent-friendly documentation navigation",
+  "description": "Local-first CLI for agent-friendly documentation navigation and pre-install library research",
   "type": "module",
   "bin": {
-    "doccli": "./src/cli.mjs"
+    "doccli": "src/cli.mjs"
   },
+  "files": [
+    "src",
+    "docs/*.md",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build:index": "node ./src/cli.mjs build --src fixtures/docs --library acme-payments --version 2.4.1 --out .doccli/index.json --json",
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "npm test"
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "author": {
+    "name": "Arkology Studio",
+    "url": "https://arkology.studio"
+  },
+  "contributors": [
+    {
+      "name": "Arkology Studio",
+      "url": "https://github.com/arkologystudio"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arkologystudio/doc-cli.git"
+  },
+  "homepage": "https://github.com/arkologystudio/doc-cli#readme",
+  "bugs": {
+    "url": "https://github.com/arkologystudio/doc-cli/issues"
+  },
+  "keywords": [
+    "cli",
+    "documentation",
+    "ai-agent",
+    "developer-tools",
+    "search",
+    "citations"
+  ]
 }

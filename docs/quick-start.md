@@ -129,6 +129,40 @@ doccli use "YourProjectName" "How do I set up authentication?" \
 # Related docs: docs/auth-guide, docs/security
 ```
 
+## Pre-Install Library Research (New)
+
+Use this workflow when the library is not installed locally and you want to research docs first.
+
+### Step A: Discover candidate libraries
+
+```bash
+doccli discover "axios" --provider npm --max-results 5 --json
+```
+
+### Step B: Fetch and pin docs snapshot
+
+```bash
+doccli fetch "npm:axios" --json
+```
+
+The fetch response includes:
+- `resolved_ref` (immutable version/ref)
+- `docs_dir` (snapshot docs path)
+- `source_manifest_path` (provenance metadata)
+
+### Step C: Build index from fetched docs with provenance
+
+```bash
+doccli build \
+  --src /path/to/fetched/docs \
+  --library "axios" \
+  --version "1.13.6" \
+  --source-manifest /path/to/.doccli/source.json \
+  --out .doccli/index.json
+```
+
+Then create `.doccli/doccli.json` and use normal `search/open/cite/use`.
+
 ## Common Workflows
 
 ### Developer Documentation Lookup
@@ -185,6 +219,8 @@ mv .doccli/doccli.json.tmp .doccli/doccli.json
 | `open` | View document section | `doccli open "readme#installation"` |
 | `cite` | Get citation string | `doccli cite "readme#features"` |
 | `use` | Task-based query | `doccli use "Foo" "How do I...?"` |
+| `discover` | Find external docs/library candidates | `doccli discover "express" --provider npm` |
+| `fetch` | Snapshot external docs with pinned ref | `doccli fetch "npm:express"` |
 
 ### Common Flags
 
@@ -193,8 +229,9 @@ mv .doccli/doccli.json.tmp .doccli/doccli.json
 | `--json` | Output as JSON | Human-readable |
 | `--index <file>` | Index file path | `.doccli/index.json` |
 | `--path <dir>` | Manifest search path | current dir + node_modules |
-| `--max-results <n>` | Limit results | 10 |
+| `--max-results <n>` | Limit results | 5 (`search`/`discover`), 3 (`use`) |
 | `--max-chars <n>` | Limit content length | 2000 |
+| `--source-manifest <file>` | Attach provenance to build output | none |
 
 ## JSON Output
 

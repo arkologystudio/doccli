@@ -5,7 +5,7 @@ import path from "node:path";
 export function parseArgs(argv) {
   const flags = {};
   const positionals = [];
-  const booleanFlags = new Set(["json", "no-color", "help", "emit-manifest"]);
+  const booleanFlags = new Set(["json", "no-color", "help", "emit-manifest", "no-cache"]);
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -90,10 +90,49 @@ export function parseDocRef(rawRef) {
 }
 
 export function tokenize(value) {
+  const stopwords = new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "do",
+    "for",
+    "from",
+    "how",
+    "i",
+    "in",
+    "into",
+    "is",
+    "it",
+    "my",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "this",
+    "to",
+    "using",
+    "use",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "with",
+    "you",
+    "your"
+  ]);
   return value
     .toLowerCase()
     .split(/[^a-z0-9]+/g)
-    .filter((token) => token.length > 1);
+    .filter((token) => token.length > 1)
+    .filter((token) => !stopwords.has(token));
 }
 
 export function countOccurrences(text, token) {

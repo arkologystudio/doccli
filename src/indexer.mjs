@@ -15,7 +15,29 @@ function validateIndex(index) {
   return typeof index.schema_version === "string";
 }
 
-export function buildIndex({ srcDir, outFile, library, version }) {
+function readSourceManifest(sourceManifestPath = "") {
+  if (!sourceManifestPath) {
+    return null;
+  }
+
+  try {
+    const raw = fs.readFileSync(path.resolve(sourceManifestPath), "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    return parsed;
+  } catch {
+    throw new CliError(
+      EXIT_CODES.INVALID_ARGS,
+      "INVALID_ARGS",
+      `Could not read source manifest: ${sourceManifestPath}`,
+      "Pass a valid --source-manifest path or omit it"
+    );
+  }
+}
+
+export function buildIndex({ srcDir, outFile, library, version, sourceManifestPath = "", buildContext = null }) {
   if (!fs.existsSync(srcDir)) {
     throw new CliError(
       EXIT_CODES.INVALID_ARGS,
@@ -74,6 +96,7 @@ export function buildIndex({ srcDir, outFile, library, version }) {
   sourceHashes.sort((left, right) => left.localeCompare(right));
 
   const sourceHash = `sha256:${hashText(sourceHashes.join("\n"))}`;
+  const sourceManifest = readSourceManifest(sourceManifestPath);
   const index = {
     schema_version: "1",
     library,
@@ -86,6 +109,29 @@ export function buildIndex({ srcDir, outFile, library, version }) {
     docs,
     sections
   };
+  if (buildContext && typeof buildContext === "object") {
+    const inferred = Boolean(buildContext.inferred);
+    if (inferred) {
+      index.build.inferred = true;
+    }
+    if (typeof buildContext.derivation === "string" && buildContext.derivation) {
+      index.build.derivation = buildContext.derivation;
+    }
+  }
+  if (sourceManifest) {
+    index.build.source = {
+      source_type: sourceManifest.source_type || "",
+      provider: sourceManifest.provider || "",
+      canonical_url: sourceManifest.canonical_url || "",
+      requested_ref: sourceManifest.requested_ref || "",
+      resolved_ref: sourceManifest.resolved_ref || "",
+      integrity: sourceManifest.integrity || "",
+      fetched_at: sourceManifest.fetched_at || "",
+      snapshot_dir: sourceManifest.snapshot_dir || "",
+      docs_dir: sourceManifest.docs_dir || "",
+      trust_signals: sourceManifest.trust_signals || {}
+    };
+  }
 
   ensureDirForFile(outFile);
   fs.writeFileSync(outFile, JSON.stringify(index, null, 2), "utf8");
@@ -97,7 +143,8 @@ export function buildIndex({ srcDir, outFile, library, version }) {
     index_path: outFile,
     docs_count: docs.length,
     sections_count: sections.length,
-    source_hash: sourceHash
+    source_hash: sourceHash,
+    source_manifest_path: sourceManifestPath ? path.resolve(sourceManifestPath) : ""
   };
 }
 
