@@ -22,7 +22,7 @@ import {
 
 function usage() {
   return [
-    "DocCLI",
+    "Trail Docs",
     "",
     "Usage:",
     "  trail-docs bootstrap --src <dir> --library <name> --version <semver> [--docs-out <dir>] [--out <file>] [--emit-manifest] [--manifest-out <file>] [--json]",

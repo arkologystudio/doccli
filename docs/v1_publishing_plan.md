@@ -1,4 +1,4 @@
-# DocCLI V1 Publishing Plan
+# Trail Docs V1 Publishing Plan
 
 ## Objective
 Ship a stable `v1.0.0` that makes it easier, quicker, and cheaper for agents to use software tools/libraries through a CLI-first docs workflow.

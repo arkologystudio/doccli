@@ -1,4 +1,4 @@
-# DocCLI Quick Start Guide
+# Trail Docs Quick Start Guide
 
 Get started with trail-docs in 5 minutes.
 

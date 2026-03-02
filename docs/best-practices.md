@@ -1,4 +1,4 @@
-# DocCLI Best Practices
+# Trail Docs Best Practices
 
 Optimization tips and decision guide for using trail-docs effectively.
 
@@ -524,7 +524,7 @@ class MultiProjectDocs:
 
 ```bash
 # Set up search paths for multiple projects
-export DOCCLI_PATHS="/path/to/project1/.trail-docs:/path/to/project2/.trail-docs"
+export TRAIL_DOCS_PATHS="/path/to/project1/.trail-docs:/path/to/project2/.trail-docs"
 
 # Now 'use' command can find docs for any library
 trail-docs use "Project1" "task..."

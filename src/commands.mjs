@@ -596,7 +596,7 @@ function findManifestForLibrary(library, explicitPath = "") {
     }
   }
 
-  const envPaths = process.env.DOCCLI_PATHS || "";
+  const envPaths = process.env.TRAIL_DOCS_PATHS || "";
   if (envPaths) {
     for (const entry of envPaths.split(path.delimiter)) {
       if (entry.trim()) {
@@ -631,7 +631,7 @@ function findManifestForLibrary(library, explicitPath = "") {
     EXIT_CODES.RESOLUTION_FAILED,
     "RESOLUTION_FAILED",
     `Could not locate docs manifest for library ${library}. Checked: ${searched}${deduped.length > 8 ? ", ..." : ""}`,
-    "Install docs artifact, emit trail-docs.json, set DOCCLI_PATHS, or pass --path"
+    "Install docs artifact, emit trail-docs.json, set TRAIL_DOCS_PATHS, or pass --path"
   );
 }
 

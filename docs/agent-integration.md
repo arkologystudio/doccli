@@ -1,4 +1,4 @@
-# DocCLI Agent Integration Guide
+# Trail Docs Agent Integration Guide
 
 How to integrate trail-docs into AI agent systems for intelligent documentation retrieval.
 
@@ -287,7 +287,7 @@ def confidence_based_execution(response):
 ### Example 1: Claude Code Integration
 
 ```python
-class DocCLITool:
+class TrailDocsTool:
     """Minimal wrapper for Claude Code-style agents"""
 
     def __init__(self, project_path, library_name):
@@ -331,7 +331,7 @@ class DocCLITool:
         return json.loads(result.stdout)
 
 # Usage in agent:
-docs = DocCLITool('/path/to/project', 'MyProject')
+docs = TrailDocsTool('/path/to/project', 'MyProject')
 
 # Agent receives user request: "Deploy to production"
 response = docs.query("How do I deploy to production?")
@@ -419,7 +419,7 @@ class AutonomousAgent:
     """Agent that uses trail-docs for self-guided task execution"""
 
     def __init__(self, project_path, library_name):
-        self.docs = DocCLITool(project_path, library_name)
+        self.docs = TrailDocsTool(project_path, library_name)
         self.execution_log = []
 
     def execute_task(self, user_request):
@@ -668,8 +668,8 @@ def test_trail-docs_integration():
 
 **Solution:** Ensure trail-docs is in PATH or use absolute path:
 ```python
-DOCCLI_PATH = '/usr/local/bin/trail-docs'  # or full path
-subprocess.run([DOCCLI_PATH, 'stats', ...])
+TRAIL_DOCS_PATH = '/usr/local/bin/trail-docs'  # or full path
+subprocess.run([TRAIL_DOCS_PATH, 'stats', ...])
 ```
 
 ### Issue: JSON parsing errors

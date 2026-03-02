@@ -1,4 +1,4 @@
-# DocCLI JSON Output Schema (v0.1.x)
+# Trail Docs JSON Output Schema (v0.1.x)
 
 This document defines the JSON shape for each `trail-docs` command when `--json` is used.
 

@@ -1,4 +1,4 @@
-# DocCLI
+# Trail Docs
 
 Natural language documentation retrieval for AI agents – via CLI!
 
@@ -9,7 +9,7 @@ Natural language documentation retrieval for AI agents – via CLI!
 `trail-docs` was designed primarily _for_ agents, although it can be used by human developers as well.
 
 
-## Why DocCLI
+## Why Trail Docs
 
 AI agents typically either:
 
