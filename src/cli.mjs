@@ -2,15 +2,20 @@
 import { CliError } from "./errors.mjs";
 import { ERROR_CODE_NAMES, EXIT_CODES } from "./constants.mjs";
 import { parseArgs } from "./utils.mjs";
+import { applyConfigDefaults, loadProjectConfig } from "./config.mjs";
 import {
   runBootstrap,
   runBuild,
   runCite,
   runDiscover,
   runFetch,
+  runIndex,
+  runFn,
   runList,
   runOpen,
+  runPrep,
   runSearch,
+  runSurface,
   runStats,
   runUse
 } from "./commands.mjs";
@@ -26,10 +31,16 @@ function usage() {
     "  doccli stats [--index <file>] [--json]",
     "  doccli discover <query> [--provider <all|catalog|npm|github>] [--catalog <file>] [--ecosystem <name>] [--max-results <n>] [--json]",
     "  doccli fetch <selector> [--version <semver>] [--ref <git-ref>] [--out <dir>] [--cache-dir <dir>] [--policy <file>] [--json]",
-    "  doccli search <query> [--index <file>] [--max-results <n>] [--json]",
+    "  doccli prep <query_or_selector_or_url> [--path <dir>] [--out <file>] [--manifest-out <file>] [--choose <n>] [--json]",
+    "  doccli index <query_or_selector_or_url> [--path <dir>] [--out <file>] [--manifest-out <file>] [--choose <n>] [--json]",
+    "  doccli surface <selector> [--symbol-kind <all|function|class|method|type>] [--max-results <n>] [--examples <n>] [--cache-dir <dir>] [--json]",
+    "  doccli fn <selector#symbol_query> [--examples <n>] [--cache-dir <dir>] [--json]",
+    "  doccli search <query> [--index <file>] [--indexes <f1,f2,...>] [--max-results <n>] [--json]",
     "  doccli open <doc_id#anchor> [--index <file>] [--max-chars <n>] [--json]",
     "  doccli cite <doc_id#anchor> [--index <file>] [--json]",
-    "  doccli use <library> \"<task>\" [--path <dir>] [--max-results <n>] [--json]"
+    "  doccli use <library> \"<task>\" [--path <dir>] [--max-results <n>] [--no-auto-heal] [--json]",
+    "  doccli use \"<task>\" --libs <selector1,selector2,...> [--max-results <n>] [--json]",
+    "  doccli use \"<task>\" --indexes <i1,i2,...> [--max-results <n>] [--json]"
   ].join("\n");
 }
 
@@ -54,7 +65,28 @@ function printHuman(command, payload) {
     return;
   }
 
+  if (command === "prep" || command === "index") {
+    console.log(`Prepared ${payload.library}@${payload.version}`);
+    console.log(`Selector: ${payload.selector}`);
+    console.log(`Index: ${payload.index_path}`);
+    console.log(`Manifest: ${payload.manifest_path}`);
+    return;
+  }
+
   if (command === "search") {
+    if (payload.mode === "federated") {
+      console.log(`Federated results for "${payload.query}":`);
+      if (!Array.isArray(payload.results) || payload.results.length === 0) {
+        console.log("No matches.");
+        return;
+      }
+      for (const result of payload.results) {
+        console.log(
+          `- [${result.score}] ${result.library}@${result.version} :: ${result.doc_id}#${result.anchor}`
+        );
+      }
+      return;
+    }
     console.log(`Results for "${payload.query}" in ${payload.library}@${payload.version}:`);
     if (payload.results.length === 0) {
       console.log("No matches.");
@@ -87,6 +119,27 @@ function printHuman(command, payload) {
     console.log(`Manifest: ${payload.source_manifest_path}`);
     if (payload.cache_hit) {
       console.log("Cache: hit");
+    }
+    return;
+  }
+
+  if (command === "surface") {
+    console.log(`${payload.library}@${payload.version} (${payload.confidence})`);
+    console.log(`Exports: ${payload.exports.length}, symbols: ${payload.symbols.length}`);
+    for (const entry of payload.exports.slice(0, 12)) {
+      console.log(`- ${entry.export_name} (${entry.kind}) -> ${entry.symbol_id}`);
+    }
+    return;
+  }
+
+  if (command === "fn") {
+    console.log(`${payload.selector}#${payload.symbol_query} [${payload.match_type}]`);
+    console.log(`${payload.symbol.fq_name} (${payload.symbol.kind})`);
+    for (const signature of payload.symbol.signatures || []) {
+      console.log(`- ${signature}`);
+    }
+    if (payload.examples?.length > 0) {
+      console.log(`Examples: ${payload.examples.length}`);
     }
     return;
   }
@@ -131,6 +184,37 @@ function printHuman(command, payload) {
   }
 
   if (command === "use") {
+    if (payload.mode === "multi_library") {
+      console.log(`Task: ${payload.task}`);
+      if (!Array.isArray(payload.recommendations) || payload.recommendations.length === 0) {
+        console.log("No callable recommendations found.");
+        return;
+      }
+      for (const recommendation of payload.recommendations) {
+        console.log(
+          `${recommendation.rank}. ${recommendation.library} -> ${recommendation.fq_name} [${recommendation.confidence}]`
+        );
+        if (recommendation.signature) {
+          console.log(`  signature: ${recommendation.signature}`);
+        }
+        console.log(`  why: ${recommendation.why}`);
+        console.log(`  cite: ${recommendation.citation_id}`);
+      }
+      return;
+    }
+    if (payload.mode === "federated_docs") {
+      console.log(`Task: ${payload.task} [${payload.confidence}]`);
+      if (!Array.isArray(payload.steps) || payload.steps.length === 0) {
+        console.log("No citation-backed steps found.");
+        return;
+      }
+      for (const step of payload.steps) {
+        console.log(`${step.id} (${step.library}@${step.version}). ${step.instruction}`);
+        console.log(`  cite: ${step.citations.join(", ")}`);
+      }
+      return;
+    }
+
     console.log(`${payload.library}@${payload.version} :: ${payload.task} [${payload.confidence}]`);
     if (payload.steps.length === 0) {
       console.log("No citation-backed steps found for this task.");
@@ -208,35 +292,52 @@ async function main() {
   }
 
   const parsed = parseArgs(argv.slice(1));
-  const asJson = Boolean(parsed.flags.json);
+  const loadedConfig = loadProjectConfig(process.cwd());
+  const applied = applyConfigDefaults({
+    command,
+    positionals: parsed.positionals,
+    flags: parsed.flags,
+    config: loadedConfig.config
+  });
+  const effectiveFlags = applied.flags;
+  const effectivePositionals = applied.positionals;
+  const asJson = Boolean(effectiveFlags.json);
 
   try {
-    if (parsed.flags.help) {
+    if (effectiveFlags.help) {
       console.log(usage());
       return;
     }
 
     let payload;
     if (command === "bootstrap") {
-      payload = runBootstrap(parsed.flags);
+      payload = runBootstrap(effectiveFlags);
     } else if (command === "build") {
-      payload = runBuild(parsed.flags);
+      payload = runBuild(effectiveFlags);
     } else if (command === "discover") {
-      payload = await runDiscover(parsed.positionals, parsed.flags);
+      payload = await runDiscover(effectivePositionals, effectiveFlags);
     } else if (command === "fetch") {
-      payload = await runFetch(parsed.positionals, parsed.flags);
+      payload = await runFetch(effectivePositionals, effectiveFlags);
+    } else if (command === "prep") {
+      payload = await runPrep(effectivePositionals, effectiveFlags);
+    } else if (command === "index") {
+      payload = await runIndex(effectivePositionals, effectiveFlags);
+    } else if (command === "surface") {
+      payload = await runSurface(effectivePositionals, effectiveFlags);
+    } else if (command === "fn") {
+      payload = await runFn(effectivePositionals, effectiveFlags);
     } else if (command === "search") {
-      payload = runSearch(parsed.positionals, parsed.flags);
+      payload = runSearch(effectivePositionals, effectiveFlags);
     } else if (command === "list") {
-      payload = runList(parsed.flags);
+      payload = runList(effectiveFlags);
     } else if (command === "stats") {
-      payload = runStats(parsed.flags);
+      payload = runStats(effectiveFlags);
     } else if (command === "open") {
-      payload = runOpen(parsed.positionals, parsed.flags);
+      payload = runOpen(effectivePositionals, effectiveFlags);
     } else if (command === "cite") {
-      payload = runCite(parsed.positionals, parsed.flags);
+      payload = runCite(effectivePositionals, effectiveFlags);
     } else if (command === "use") {
-      payload = runUse(parsed.positionals, parsed.flags);
+      payload = await runUse(effectivePositionals, effectiveFlags);
     } else {
       throw new CliError(
         EXIT_CODES.INVALID_ARGS,

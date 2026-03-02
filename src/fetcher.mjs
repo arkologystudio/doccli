@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { CliError } from "./errors.mjs";
 import { DEFAULTS, EXIT_CODES } from "./constants.mjs";
 import { ensureDirForFile, hashText, toPosixPath } from "./utils.mjs";
+import { docsPathFor, parseSelector, readManifestIfPresent, snapshotKey } from "./source-resolver.mjs";
 
 const DEFAULT_ALLOWED_EXTENSIONS = [".md", ".markdown", ".mdx", ".txt"];
 
@@ -277,51 +278,6 @@ function copyDocsFromDir(sourceDir, docsDir, policy) {
   };
 }
 
-function parseSelector(selector) {
-  const value = String(selector || "").trim();
-  if (!value) {
-    throw new CliError(
-      EXIT_CODES.INVALID_ARGS,
-      "INVALID_ARGS",
-      "Missing selector for fetch",
-      "Usage: doccli fetch <selector>"
-    );
-  }
-
-  if (value.startsWith("npm:")) {
-    return { type: "npm", package_name: value.slice(4) };
-  }
-
-  const shortGithub = value.match(/^github:([^/]+)\/([^#\s]+)$/i);
-  if (shortGithub) {
-    return { type: "github", owner: shortGithub[1], repo: shortGithub[2] };
-  }
-
-  if (fs.existsSync(path.resolve(value))) {
-    const full = path.resolve(value);
-    const stat = fs.statSync(full);
-    return { type: stat.isDirectory() ? "local_dir" : "local_file", path: full };
-  }
-
-  try {
-    const parsed = new URL(value);
-    if (parsed.hostname === "github.com") {
-      const parts = parsed.pathname.split("/").filter(Boolean);
-      if (parts.length >= 2) {
-        return {
-          type: "github",
-          owner: parts[0],
-          repo: parts[1].replace(/\.git$/i, "")
-        };
-      }
-    }
-
-    return { type: "docs_url", url: parsed.toString() };
-  } catch {
-    return { type: "npm", package_name: value };
-  }
-}
-
 async function resolveNpmSource(parsed, flags, policy) {
   const pkg = parsed.package_name;
   const metadataUrl = `https://registry.npmjs.org/${encodeURIComponent(pkg)}`;
@@ -438,16 +394,6 @@ async function resolveLocalSource(parsed) {
   };
 }
 
-function snapshotKey(source) {
-  const seed = JSON.stringify({
-    source_type: source.source_type,
-    library: source.library,
-    resolved_ref: source.resolved_ref,
-    canonical_url: source.canonical_url
-  });
-  return hashText(seed).slice(0, 24);
-}
-
 function cleanDir(dirPath) {
   if (fs.existsSync(dirPath)) {
     fs.rmSync(dirPath, { recursive: true, force: true });
@@ -462,29 +408,9 @@ function writeSourceManifest(snapshotDir, payload) {
   return sourceManifestPath;
 }
 
-function readManifestIfPresent(snapshotDir) {
-  const candidate = path.join(snapshotDir, ".doccli", "source.json");
-  if (!fs.existsSync(candidate)) {
-    return null;
-  }
-
-  try {
-    return {
-      manifest_path: candidate,
-      manifest: JSON.parse(fs.readFileSync(candidate, "utf8"))
-    };
-  } catch {
-    return null;
-  }
-}
-
 function createTempDir() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "doccli-fetch-"));
   return root;
-}
-
-function docsPathFor(snapshotDir) {
-  return path.join(snapshotDir, "docs");
 }
 
 async function materializeSource(source, snapshotDir, policy) {
@@ -538,6 +464,14 @@ async function materializeSource(source, snapshotDir, policy) {
 
 export async function fetchLibrarySource({ selector, flags = {} }) {
   const parsed = parseSelector(selector);
+  if (!parsed) {
+    throw new CliError(
+      EXIT_CODES.INVALID_ARGS,
+      "INVALID_ARGS",
+      "Missing selector for fetch",
+      "Usage: doccli fetch <selector>"
+    );
+  }
   const policy = resolvePolicy(flags.policy ? String(flags.policy) : "");
   let source;
 

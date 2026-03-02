@@ -153,6 +153,119 @@ All commands can return this payload on failure:
 }
 ```
 
+## `prep` / `index`
+
+```json
+{
+  "ok": true,
+  "query": "string",
+  "selector": "string",
+  "library": "string",
+  "version": "string",
+  "index_path": "string",
+  "manifest_path": "string",
+  "source_manifest_path": "string",
+  "docs_dir": "string",
+  "source": {
+    "source_type": "string",
+    "canonical_url": "string",
+    "resolved_ref": "string"
+  },
+  "discovered": {
+    "query": "string",
+    "candidates": []
+  }
+}
+```
+
+## `surface`
+
+```json
+{
+  "ok": true,
+  "selector": "string",
+  "library": "string",
+  "version": "string",
+  "confidence": "authoritative|partial",
+  "source": {
+    "source_type": "local|registry|github|docs",
+    "provider": "local|npm|github|url",
+    "canonical_url": "string",
+    "resolved_ref": "string",
+    "snapshot_dir": "optional string"
+  },
+  "exports": [
+    {
+      "export_name": "string",
+      "kind": "function|class|method|type",
+      "symbol_id": "string"
+    }
+  ],
+  "symbols": [
+    {
+      "symbol_id": "string",
+      "name": "string",
+      "fq_name": "string",
+      "kind": "function|class|method|type",
+      "signatures": ["string"],
+      "summary": "string",
+      "module_path": "string",
+      "line_start": 0,
+      "line_end": 0,
+      "examples": [
+        {
+          "code": "string",
+          "source_path": "string",
+          "line_start": 0,
+          "line_end": 0
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "modules_scanned": 0,
+    "symbols_extracted": 0,
+    "bytes_scanned": 0
+  },
+  "cache_hit": false
+}
+```
+
+## `fn`
+
+```json
+{
+  "selector": "string",
+  "symbol_query": "string",
+  "match_type": "exact|prefix|fuzzy",
+  "symbol": {
+    "symbol_id": "string",
+    "fq_name": "string",
+    "kind": "function|class|method|type",
+    "signatures": ["string"],
+    "summary": "string"
+  },
+  "citations": ["string"],
+  "citation_details": [
+    {
+      "citation_id": "string",
+      "source_path": "string",
+      "line_start": 0,
+      "line_end": 0,
+      "provenance": {}
+    }
+  ],
+  "examples": [
+    {
+      "code": "string",
+      "source_path": "string",
+      "line_start": 0,
+      "line_end": 0
+    }
+  ]
+}
+```
+
 ## `search`
 
 ```json
@@ -170,6 +283,26 @@ All commands can return this payload on failure:
       "source_path": "string",
       "line_start": 0,
       "line_end": 0
+    }
+  ]
+}
+```
+
+### `search` federated mode (`--indexes`)
+
+```json
+{
+  "query": "string",
+  "mode": "federated",
+  "indexes": ["string"],
+  "results": [
+    {
+      "score": 0,
+      "library": "string",
+      "version": "string",
+      "doc_id": "string",
+      "anchor": "string",
+      "citation_id": "string"
     }
   ]
 }
@@ -243,6 +376,52 @@ All commands can return this payload on failure:
     }
   ],
   "related_docs": ["doc_id"]
+}
+```
+
+## `use` (multi-library mode)
+
+```json
+{
+  "task": "string",
+  "mode": "multi_library",
+  "recommendations": [
+    {
+      "rank": 1,
+      "selector": "string",
+      "library": "string",
+      "symbol_id": "string",
+      "fq_name": "string",
+      "signature": "string",
+      "confidence": 0,
+      "why": "string",
+      "citation_id": "string"
+    }
+  ],
+  "alternatives": [],
+  "considered_libraries": ["string"]
+}
+```
+
+## `use` (federated docs mode)
+
+```json
+{
+  "task": "string",
+  "mode": "federated_docs",
+  "confidence": "authoritative|partial",
+  "indexes": ["string"],
+  "steps": [
+    {
+      "id": "step_1",
+      "library": "string",
+      "version": "string",
+      "instruction": "string",
+      "confidence": 0,
+      "citations": ["citation_id"]
+    }
+  ],
+  "citations": ["citation_id"]
 }
 ```
 

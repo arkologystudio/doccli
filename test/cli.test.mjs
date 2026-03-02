@@ -9,6 +9,7 @@ const REPO_ROOT = process.cwd();
 const CLI_PATH = path.join(REPO_ROOT, "src", "cli.mjs");
 const FIXTURE_DOCS = path.join(REPO_ROOT, "fixtures", "docs");
 const FIXTURE_CODEBASE = path.join(REPO_ROOT, "fixtures", "codebase");
+const FIXTURE_PACKAGES = path.join(REPO_ROOT, "fixtures", "packages");
 
 function makeTmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "doccli-test-"));
@@ -37,6 +38,13 @@ function setupCodebase(tmpDir) {
   const codeDir = path.join(tmpDir, "project");
   fs.cpSync(FIXTURE_CODEBASE, codeDir, { recursive: true });
   return codeDir;
+}
+
+function setupPackageFixture(tmpDir, packageName) {
+  const source = path.join(FIXTURE_PACKAGES, packageName);
+  const target = path.join(tmpDir, packageName);
+  fs.cpSync(source, target, { recursive: true });
+  return target;
 }
 
 test("build generates deterministic index hash", () => {
@@ -476,4 +484,258 @@ test("end-to-end preinstall flow discover fetch build use with provenance", () =
   assert.ok(Array.isArray(usePayload.citation_details));
   assert.ok(usePayload.citation_details[0].provenance);
   assert.equal(usePayload.citation_details[0].provenance.source_type, "local");
+});
+
+test("surface extracts deterministic symbols from local package fixture", () => {
+  const tmpDir = makeTmpDir();
+  const packageDir = setupPackageFixture(tmpDir, "acme-ai");
+
+  const surface1 = runCli(["surface", packageDir, "--json"], tmpDir);
+  assert.equal(surface1.code, 0);
+  const payload1 = JSON.parse(surface1.stdout);
+  assert.equal(payload1.library, "acme-ai");
+  assert.equal(payload1.confidence, "authoritative");
+  assert.ok(payload1.exports.some((entry) => entry.export_name === "OpenAI"));
+  assert.ok(payload1.symbols.some((entry) => entry.fq_name === "OpenAI.complete"));
+  assert.ok(payload1.symbols.some((entry) => Array.isArray(entry.examples) && entry.examples.length > 0));
+  assert.equal(payload1.cache_hit, false);
+
+  const surface2 = runCli(["surface", packageDir, "--json"], tmpDir);
+  assert.equal(surface2.code, 0);
+  const payload2 = JSON.parse(surface2.stdout);
+  assert.equal(payload2.cache_hit, true);
+  assert.deepEqual(
+    payload1.symbols.map((entry) => entry.fq_name),
+    payload2.symbols.map((entry) => entry.fq_name)
+  );
+});
+
+test("surface resolves npm selector from local node_modules first", () => {
+  const tmpDir = makeTmpDir();
+  const packageRoot = path.join(tmpDir, "node_modules", "acme-ai");
+  fs.mkdirSync(path.dirname(packageRoot), { recursive: true });
+  fs.cpSync(path.join(FIXTURE_PACKAGES, "acme-ai"), packageRoot, { recursive: true });
+
+  const surface = runCli(["surface", "npm:acme-ai", "--json"], tmpDir);
+  assert.equal(surface.code, 0);
+  const payload = JSON.parse(surface.stdout);
+  assert.equal(payload.source.source_type, "local");
+  assert.equal(payload.library, "acme-ai");
+  assert.ok(payload.symbols.some((entry) => entry.fq_name === "OpenAI.extract"));
+});
+
+test("fn resolves exact symbol and reports ambiguity deterministically", () => {
+  const tmpDir = makeTmpDir();
+  const packageDir = setupPackageFixture(tmpDir, "acme-ai");
+
+  const exact = runCli(["fn", `${packageDir}#OpenAI.extract`, "--json"], tmpDir);
+  assert.equal(exact.code, 0);
+  const exactPayload = JSON.parse(exact.stdout);
+  assert.equal(exactPayload.match_type, "exact");
+  assert.equal(exactPayload.symbol.fq_name, "OpenAI.extract");
+  assert.ok(exactPayload.citations[0].includes(":symbol:"));
+
+  const ambiguous = runCli(["fn", `${packageDir}#com`, "--json"], tmpDir);
+  assert.equal(ambiguous.code, 9);
+  const ambiguousPayload = JSON.parse(ambiguous.stdout);
+  assert.equal(ambiguousPayload.error.code, "AMBIGUOUS_MATCH");
+  assert.ok(ambiguousPayload.error.hint.includes("Try one of:"));
+});
+
+test("use --libs returns callable recommendations across libraries", () => {
+  const tmpDir = makeTmpDir();
+  const acmeAiDir = setupPackageFixture(tmpDir, "acme-ai");
+  const altDir = path.join(tmpDir, "acme-transformers");
+  fs.mkdirSync(path.join(altDir, "examples"), { recursive: true });
+  fs.writeFileSync(
+    path.join(altDir, "package.json"),
+    JSON.stringify({ name: "acme-transformers", version: "0.3.0", types: "index.d.ts" }, null, 2),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(altDir, "index.d.ts"),
+    [
+      "export interface PipelineOptions {",
+      "  model: string;",
+      "}",
+      "export declare class Pipeline {",
+      "  extract(input: string): Promise<Record<string, unknown>>;",
+      "}",
+      "export declare function summarize(input: string): Promise<string>;"
+    ].join("\n"),
+    "utf8"
+  );
+  fs.writeFileSync(
+    path.join(altDir, "examples", "basic.ts"),
+    [
+      "import { Pipeline } from \"acme-transformers\";",
+      "const pipeline = new Pipeline();",
+      "pipeline.extract(\"invoice: 123\");"
+    ].join("\n"),
+    "utf8"
+  );
+
+  const use = runCli(
+    ["use", "extract structured data from text", "--libs", `${acmeAiDir},${altDir}`, "--json"],
+    tmpDir
+  );
+  assert.equal(use.code, 0);
+  const payload = JSON.parse(use.stdout);
+  assert.equal(payload.mode, "multi_library");
+  assert.ok(Array.isArray(payload.recommendations));
+  assert.ok(payload.recommendations.length > 0);
+  assert.ok(payload.recommendations[0].citation_id.includes(":symbol:"));
+  assert.deepEqual(payload.considered_libraries, [acmeAiDir, altDir]);
+});
+
+test("surface parser fallback yields partial confidence without crashing", () => {
+  const tmpDir = makeTmpDir();
+  const brokenDir = path.join(tmpDir, "broken-lib");
+  fs.mkdirSync(brokenDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(brokenDir, "package.json"),
+    JSON.stringify({ name: "broken-lib", version: "0.0.1", main: "index.js" }, null, 2),
+    "utf8"
+  );
+  fs.writeFileSync(path.join(brokenDir, "index.js"), "export function broken(name, options {\n", "utf8");
+
+  const surface = runCli(["surface", brokenDir, "--json"], tmpDir);
+  assert.equal(surface.code, 0);
+  const payload = JSON.parse(surface.stdout);
+  assert.equal(payload.confidence, "partial");
+  assert.ok(payload.symbols.some((entry) => entry.name === "broken"));
+});
+
+test("prep performs one-shot fetch build manifest from local docs source", () => {
+  const tmpDir = makeTmpDir();
+  const sourceDir = path.join(tmpDir, "remote-docs");
+  fs.mkdirSync(sourceDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceDir, "README.md"),
+    ["# Remote Docs", "", "## Configure", "Run `remote configure` to setup."].join("\n"),
+    "utf8"
+  );
+
+  const prep = runCli(["prep", sourceDir, "--path", ".doccli", "--json"], tmpDir);
+  assert.equal(prep.code, 0);
+  const payload = JSON.parse(prep.stdout);
+  assert.equal(payload.ok, true);
+  assert.ok(fs.existsSync(path.join(tmpDir, ".doccli", "index.json")));
+  assert.ok(fs.existsSync(path.join(tmpDir, ".doccli", "doccli.json")));
+
+  const indexAlias = runCli(["index", sourceDir, "--path", ".doccli-alt", "--json"], tmpDir);
+  assert.equal(indexAlias.code, 0);
+  const aliasPayload = JSON.parse(indexAlias.stdout);
+  assert.equal(aliasPayload.ok, true);
+  assert.ok(fs.existsSync(path.join(tmpDir, ".doccli-alt", "doccli.json")));
+});
+
+test("use auto-heals by preparing missing manifest when selector is provided", () => {
+  const tmpDir = makeTmpDir();
+  const sourceDir = path.join(tmpDir, "autofix-docs");
+  fs.mkdirSync(sourceDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceDir, "README.md"),
+    [
+      "# Autofix Docs",
+      "",
+      "## Setup",
+      "Run `autofix init` before first use.",
+      "",
+      "## Configure",
+      "Run `autofix configure --token \"$TOKEN\"` and expect success."
+    ].join("\n"),
+    "utf8"
+  );
+
+  const use = runCli(["use", sourceDir, "configure", "--path", ".doccli", "--json"], tmpDir);
+  assert.equal(use.code, 0);
+  const payload = JSON.parse(use.stdout);
+  assert.ok(Array.isArray(payload.steps));
+  assert.ok(payload.steps.length > 0);
+  assert.ok(fs.existsSync(path.join(tmpDir, ".doccli", "doccli.json")));
+});
+
+test("config defaults from doccli.toml apply to search and use", () => {
+  const tmpDir = makeTmpDir();
+  setupDocs(tmpDir);
+
+  const build = runCli(
+    ["build", "--src", "docs", "--library", "acme-payments", "--version", "2.4.1", "--out", ".doccli/index.json", "--json"],
+    tmpDir
+  );
+  assert.equal(build.code, 0);
+
+  fs.writeFileSync(
+    path.join(tmpDir, ".doccli", "doccli.json"),
+    JSON.stringify(
+      {
+        schema_version: "1",
+        library: "acme-payments",
+        library_version: "2.4.1",
+        index_path: "index.json",
+        built_at: new Date().toISOString()
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  fs.writeFileSync(
+    path.join(tmpDir, "doccli.toml"),
+    [
+      "library = \"acme-payments\"",
+      "index_path = \".doccli/index.json\"",
+      "manifest_path = \".doccli\"",
+      "output = \"json\""
+    ].join("\n"),
+    "utf8"
+  );
+
+  const search = runCli(["search", "refresh token"], tmpDir);
+  assert.equal(search.code, 0);
+  const searchPayload = JSON.parse(search.stdout);
+  assert.ok(searchPayload.results.length > 0);
+
+  const use = runCli(["use", "refresh token flow"], tmpDir);
+  assert.equal(use.code, 0);
+  const usePayload = JSON.parse(use.stdout);
+  assert.equal(usePayload.library, "acme-payments");
+  assert.ok(usePayload.steps.length > 0);
+});
+
+test("federated search and use query across multiple indexes", () => {
+  const tmpDir = makeTmpDir();
+  setupDocs(tmpDir);
+
+  const indexA = runCli(
+    ["build", "--src", "docs", "--library", "acme-core", "--version", "1.0.0", "--out", ".doccli/core.json", "--json"],
+    tmpDir
+  );
+  assert.equal(indexA.code, 0);
+  const indexB = runCli(
+    ["build", "--src", "docs", "--library", "acme-plugin", "--version", "1.0.0", "--out", ".doccli/plugin.json", "--json"],
+    tmpDir
+  );
+  assert.equal(indexB.code, 0);
+
+  const federatedSearch = runCli(
+    ["search", "refresh token", "--indexes", ".doccli/core.json,.doccli/plugin.json", "--json"],
+    tmpDir
+  );
+  assert.equal(federatedSearch.code, 0);
+  const searchPayload = JSON.parse(federatedSearch.stdout);
+  assert.equal(searchPayload.mode, "federated");
+  assert.ok(searchPayload.results.some((entry) => entry.library === "acme-core"));
+  assert.ok(searchPayload.results.some((entry) => entry.library === "acme-plugin"));
+
+  const federatedUse = runCli(
+    ["use", "webhook signature verification", "--indexes", ".doccli/core.json,.doccli/plugin.json", "--json"],
+    tmpDir
+  );
+  assert.equal(federatedUse.code, 0);
+  const usePayload = JSON.parse(federatedUse.stdout);
+  assert.equal(usePayload.mode, "federated_docs");
+  assert.ok(Array.isArray(usePayload.steps));
 });

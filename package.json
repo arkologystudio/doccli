@@ -18,6 +18,10 @@
     "test": "node --test",
     "prepublishOnly": "npm test"
   },
+  "dependencies": {
+    "toml": "^3.0.0",
+    "typescript": "^5.9.3"
+  },
   "engines": {
     "node": ">=20"
   },

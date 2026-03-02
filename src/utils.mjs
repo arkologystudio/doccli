@@ -5,7 +5,7 @@ import path from "node:path";
 export function parseArgs(argv) {
   const flags = {};
   const positionals = [];
-  const booleanFlags = new Set(["json", "no-color", "help", "emit-manifest", "no-cache"]);
+  const booleanFlags = new Set(["json", "no-color", "help", "emit-manifest", "no-cache", "no-auto-heal"]);
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];

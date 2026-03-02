@@ -18,7 +18,11 @@ export const DEFAULTS = {
   maxResults: 5,
   maxChars: 2000,
   fetchMaxFiles: 2000,
-  fetchMaxTotalBytes: 20 * 1024 * 1024
+  fetchMaxTotalBytes: 20 * 1024 * 1024,
+  surfaceMaxSymbols: 200,
+  surfaceMaxExamples: 3,
+  surfaceMaxFiles: 2000,
+  surfaceMaxBytes: 20 * 1024 * 1024
 };
 
 export const ERROR_CODE_NAMES = {

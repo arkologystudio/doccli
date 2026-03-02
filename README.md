@@ -59,6 +59,25 @@ doccli build \
   --version "1.13.6" \
   --source-manifest .doccli/cache/sources/<snapshot>/.doccli/source.json \
   --out .doccli/index.json
+
+# One-shot alternative (discover/fetch/build/manifest):
+doccli prep "axios" --path .doccli --json
+
+# One-shot URL ingestion:
+doccli index "https://raw.githubusercontent.com/axios/axios/v1.x/README.md" --path .doccli --json
+```
+
+### 3) API surface + callable guidance workflow
+
+```bash
+# Extract exported API + signatures
+doccli surface npm:openai --json
+
+# Look up a concrete callable
+doccli fn "npm:openai#OpenAI.complete" --json
+
+# Route a task across multiple candidate libraries
+doccli use "extract structured data from text" --libs npm:openai,npm:transformers --json
 ```
 
 ## Commands
@@ -71,10 +90,30 @@ doccli build \
 | `stats` | Index metadata and coverage |
 | `discover` | Discover external libraries/docs candidates |
 | `fetch` | Fetch docs snapshot with pinned source metadata |
+| `prep` / `index` | One-shot discover/fetch/build/manifest pipeline |
+| `surface` | Extract library API exports, symbols, signatures, and examples |
+| `fn` | Resolve one callable/type with signature-level citations |
 | `search` | Lexical section search |
 | `open` | Open section content |
 | `cite` | Emit canonical citation |
 | `use` | Task-based steps with citations |
+
+## Project Config (`doccli.toml`)
+
+Optional project defaults:
+
+```toml
+library = "MyProject"
+index_path = ".doccli/index.json"
+manifest_path = ".doccli"
+output = "json"
+
+[trust]
+policy = "doccli.policy.json"
+
+[federation]
+indexes = [".doccli/index.json", "../plugin/.doccli/index.json"]
+```
 
 Run `doccli --help` for full flags.
 
