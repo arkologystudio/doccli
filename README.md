@@ -2,11 +2,11 @@
 
 Natural language documentation retrieval for AI agents – via CLI!
 
-`doccli` turns markdown docs into a searchable, citation-backed knowledge base and now supports pre-install research for external libraries.
+`docpilot` turns markdown docs into a searchable, citation-backed knowledge base and now supports pre-install research for external libraries.
 
-`doccli`'s purpose is to improve codebase comprehension and navitation for agents – ultimately making it easier, faster and cheaper to use software libraries. 
+`docpilot`'s purpose is to improve codebase comprehension and navitation for agents – ultimately making it easier, faster and cheaper to use software libraries. 
 
-`doccli` was designed primarily _for_ agents, although it can be used by human developers as well.
+`docpilot` was designed primarily _for_ agents, although it can be used by human developers as well.
 
 
 ## Why DocCLI
@@ -16,7 +16,7 @@ AI agents typically either:
 1. Read too many files (high token cost), or
 2. Use brittle grep loops (high latency, weak traceability).
 
-`doccli` provides:
+`docpilot` provides:
 
 1. Fast local retrieval from an index.
 2. Deterministic JSON output.
@@ -26,7 +26,7 @@ AI agents typically either:
 ## Install
 
 ```bash
-npm install -g doccli
+npm install -g docpilot
 ```
 
 ## Core Workflows
@@ -34,11 +34,11 @@ npm install -g doccli
 ### 1) Local docs workflow (existing project docs)
 
 ```bash
-doccli build --src . --library "MyProject" --version "1.0.0" --out .doccli/index.json
+docpilot build --src . --library "MyProject" --version "1.0.0" --out .docpilot/index.json
 
-echo '{"schema_version":"1","library":"MyProject","library_version":"1.0.0","index_path":"index.json"}' > .doccli/doccli.json
+echo '{"schema_version":"1","library":"MyProject","library_version":"1.0.0","index_path":"index.json"}' > .docpilot/docpilot.json
 
-doccli use "MyProject" "How do I deploy to production?" --path .doccli
+docpilot use "MyProject" "How do I deploy to production?" --path .docpilot
 ```
 
 ### 2) Pre-install research workflow (unknown library)
@@ -46,38 +46,38 @@ doccli use "MyProject" "How do I deploy to production?" --path .doccli
 ```bash
 # Discover candidates
 # (providers: all|catalog|npm|github)
-doccli discover "axios" --provider npm --max-results 5 --json
+docpilot discover "axios" --provider npm --max-results 5 --json
 
 # Fetch docs snapshot and pin source ref
-doccli fetch "npm:axios" --json
+docpilot fetch "npm:axios" --json
 
 # Build index from fetched docs with provenance
 # (using the fetch output paths)
-doccli build \
-  --src .doccli/cache/sources/<snapshot>/docs \
+docpilot build \
+  --src .docpilot/cache/sources/<snapshot>/docs \
   --library "axios" \
   --version "1.13.6" \
-  --source-manifest .doccli/cache/sources/<snapshot>/.doccli/source.json \
-  --out .doccli/index.json
+  --source-manifest .docpilot/cache/sources/<snapshot>/.docpilot/source.json \
+  --out .docpilot/index.json
 
 # One-shot alternative (discover/fetch/build/manifest):
-doccli prep "axios" --path .doccli --json
+docpilot prep "axios" --path .docpilot --json
 
 # One-shot URL ingestion:
-doccli index "https://raw.githubusercontent.com/axios/axios/v1.x/README.md" --path .doccli --json
+docpilot index "https://raw.githubusercontent.com/axios/axios/v1.x/README.md" --path .docpilot --json
 ```
 
 ### 3) API surface + callable guidance workflow
 
 ```bash
 # Extract exported API + signatures
-doccli surface npm:openai --json
+docpilot surface npm:openai --json
 
 # Look up a concrete callable
-doccli fn "npm:openai#OpenAI.complete" --json
+docpilot fn "npm:openai#OpenAI.complete" --json
 
 # Route a task across multiple candidate libraries
-doccli use "extract structured data from text" --libs npm:openai,npm:transformers --json
+docpilot use "extract structured data from text" --libs npm:openai,npm:transformers --json
 ```
 
 ## Commands
@@ -98,24 +98,24 @@ doccli use "extract structured data from text" --libs npm:openai,npm:transformer
 | `cite` | Emit canonical citation |
 | `use` | Task-based steps with citations |
 
-## Project Config (`doccli.toml`)
+## Project Config (`docpilot.toml`)
 
 Optional project defaults:
 
 ```toml
 library = "MyProject"
-index_path = ".doccli/index.json"
-manifest_path = ".doccli"
+index_path = ".docpilot/index.json"
+manifest_path = ".docpilot"
 output = "json"
 
 [trust]
-policy = "doccli.policy.json"
+policy = "docpilot.policy.json"
 
 [federation]
-indexes = [".doccli/index.json", "../plugin/.doccli/index.json"]
+indexes = [".docpilot/index.json", "../plugin/.docpilot/index.json"]
 ```
 
-Run `doccli --help` for full flags.
+Run `docpilot --help` for full flags.
 
 ## JSON Output
 
@@ -159,7 +159,7 @@ Full schema: [docs/json_output_schema.md](./docs/json_output_schema.md)
 
 Fetched documentation is treated as untrusted input.
 
-`fetch` supports policy controls via `doccli.policy.json`:
+`fetch` supports policy controls via `docpilot.policy.json`:
 
 ```json
 {
@@ -181,11 +181,11 @@ The source manifest stores:
 
 ## Performance Notes
 
-`doccli` is optimized for deterministic local retrieval.
+`docpilot` is optimized for deterministic local retrieval.
 
 1. Build once, query many.
 2. Use `--json` for agent integrations.
-3. For repeated external research, reuse cached snapshots from `.doccli/cache/sources`.
+3. For repeated external research, reuse cached snapshots from `.docpilot/cache/sources`.
 
 ## Testing
 
@@ -197,9 +197,9 @@ Current suite covers deterministic builds, retrieval commands, manifest resoluti
 
 ## Documentation
 
-1. [Quick Start](./docs/doccli-quick-start.md)
-2. [Agent Integration](./docs/doccli-agent-integration.md)
-3. [Best Practices](./docs/doccli-best-practices.md)
+1. [Quick Start](./docs/docpilot-quick-start.md)
+2. [Agent Integration](./docs/docpilot-agent-integration.md)
+3. [Best Practices](./docs/docpilot-best-practices.md)
 4. [JSON Output Schema](./docs/json_output_schema.md)
 5. [V1 Publishing Plan](./docs/v1_publishing_plan.md)
 

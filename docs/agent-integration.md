@@ -1,12 +1,12 @@
 # DocCLI Agent Integration Guide
 
-How to integrate doccli into AI agent systems for intelligent documentation retrieval.
+How to integrate docpilot into AI agent systems for intelligent documentation retrieval.
 
 ## Overview
 
-doccli is designed specifically for AI agents. This guide shows you how to integrate it into your agent workflows for efficient, citation-backed documentation access.
+docpilot is designed specifically for AI agents. This guide shows you how to integrate it into your agent workflows for efficient, citation-backed documentation access.
 
-## Why doccli for Agents?
+## Why docpilot for Agents?
 
 ### Traditional Approach Problems
 - 📂 Reading entire doc directories is token-expensive
@@ -14,7 +14,7 @@ doccli is designed specifically for AI agents. This guide shows you how to integ
 - 📝 No structured way to cite sources
 - 🎯 Hard to get actionable steps from raw documentation
 
-### doccli Solution
+### docpilot Solution
 - ✅ Pre-indexed, fast search (no file I/O spam)
 - ✅ Natural language queries with citation-backed answers
 - ✅ Confidence scores guide next actions
@@ -32,16 +32,16 @@ doccli is designed specifically for AI agents. This guide shows you how to integ
          │ Shell command or API wrapper
          │
 ┌────────▼────────┐
-│     doccli      │
+│     docpilot      │
 │  (CLI process)  │
 └────────┬────────┘
          │
          │ Reads from
          │
 ┌────────▼────────┐
-│ .doccli/        │
+│ .docpilot/        │
 │  index.json     │
-│  doccli.json    │
+│  docpilot.json    │
 └─────────────────┘
 ```
 
@@ -49,10 +49,10 @@ doccli is designed specifically for AI agents. This guide shows you how to integ
 
 For unknown libraries, add an acquisition phase before query:
 
-1. `doccli discover "<library>" ...`
-2. `doccli fetch "<selector>" ...`
-3. `doccli build --source-manifest ...`
-4. `doccli use ...`
+1. `docpilot discover "<library>" ...`
+2. `docpilot fetch "<selector>" ...`
+3. `docpilot build --source-manifest ...`
+4. `docpilot use ...`
 
 This keeps citations tied to pinned external refs (`resolved_ref`) and preserves provenance in JSON outputs.
 
@@ -71,7 +71,7 @@ def discover_documentation(project_path):
 
     # Get index statistics
     result = subprocess.run(
-        ['doccli', 'stats', '--json'],
+        ['docpilot', 'stats', '--json'],
         cwd=project_path,
         capture_output=True,
         text=True
@@ -90,7 +90,7 @@ def discover_documentation(project_path):
 stats = discover_documentation('/path/to/project')
 if stats['docs_count'] > 0:
     print(f"📚 Found {stats['docs_count']} documentation files")
-    # Proceed with doccli-based lookup
+    # Proceed with docpilot-based lookup
 else:
     print("⚠️  No documentation index found, falling back to file search")
 ```
@@ -105,8 +105,8 @@ def query_documentation(library, task, project_path):
 
     result = subprocess.run(
         [
-            'doccli', 'use', library, task,
-            '--path', f'{project_path}/.doccli',
+            'docpilot', 'use', library, task,
+            '--path', f'{project_path}/.docpilot',
             '--max-results', '5',
             '--json'
         ],
@@ -183,7 +183,7 @@ def iterative_lookup(library, initial_task, project_path):
         # Try keyword search instead
         keywords = extract_keywords(initial_task)
         search_result = subprocess.run(
-            ['doccli', 'search', keywords, '--json'],
+            ['docpilot', 'search', keywords, '--json'],
             cwd=project_path,
             capture_output=True,
             text=True
@@ -195,7 +195,7 @@ def iterative_lookup(library, initial_task, project_path):
         if results['results']:
             top_doc = results['results'][0]
             doc_content = subprocess.run(
-                ['doccli', 'open', f"{top_doc['doc_id']}#{top_doc['anchor']}", '--json'],
+                ['docpilot', 'open', f"{top_doc['doc_id']}#{top_doc['anchor']}", '--json'],
                 cwd=project_path,
                 capture_output=True,
                 text=True
@@ -234,7 +234,7 @@ def explore_related(library, initial_task, project_path, max_depth=2):
 
                 # Open related doc
                 doc_result = subprocess.run(
-                    ['doccli', 'open', doc_id, '--json'],
+                    ['docpilot', 'open', doc_id, '--json'],
                     cwd=project_path,
                     capture_output=True,
                     text=True
@@ -298,8 +298,8 @@ class DocCLITool:
         """Natural language query"""
         result = subprocess.run(
             [
-                'doccli', 'use', self.library_name, task,
-                '--path', f'{self.project_path}/.doccli',
+                'docpilot', 'use', self.library_name, task,
+                '--path', f'{self.project_path}/.docpilot',
                 '--json'
             ],
             capture_output=True,
@@ -311,7 +311,7 @@ class DocCLITool:
     def search(self, keywords):
         """Keyword search"""
         result = subprocess.run(
-            ['doccli', 'search', keywords, '--json'],
+            ['docpilot', 'search', keywords, '--json'],
             cwd=self.project_path,
             capture_output=True,
             text=True,
@@ -322,7 +322,7 @@ class DocCLITool:
     def get_doc(self, doc_id):
         """Get full document content"""
         result = subprocess.run(
-            ['doccli', 'open', doc_id, '--json'],
+            ['docpilot', 'open', doc_id, '--json'],
             cwd=self.project_path,
             capture_output=True,
             text=True,
@@ -347,7 +347,7 @@ for step in response['steps']:
 ### Example 2: MCP Server Tool Integration
 
 ```typescript
-// MCP server exposing doccli as a tool
+// MCP server exposing docpilot as a tool
 import { McpServer } from '@modelcontextprotocol/sdk';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -355,7 +355,7 @@ import { promisify } from 'util';
 const execAsync = promisify(exec);
 
 const server = new McpServer({
-  name: 'doccli-mcp-server',
+  name: 'docpilot-mcp-server',
   version: '1.0.0'
 });
 
@@ -368,7 +368,7 @@ server.tool('query-docs', {
   },
   handler: async ({ library, task, max_results }) => {
     const { stdout } = await execAsync(
-      `doccli use "${library}" "${task}" --path .doccli --max-results ${max_results} --json`
+      `docpilot use "${library}" "${task}" --path .docpilot --max-results ${max_results} --json`
     );
 
     const response = JSON.parse(stdout);
@@ -395,7 +395,7 @@ server.tool('search-docs', {
   },
   handler: async ({ query, max_results }) => {
     const { stdout } = await execAsync(
-      `doccli search "${query}" --max-results ${max_results} --json`
+      `docpilot search "${query}" --max-results ${max_results} --json`
     );
 
     const response = JSON.parse(stdout);
@@ -416,7 +416,7 @@ server.tool('search-docs', {
 
 ```python
 class AutonomousAgent:
-    """Agent that uses doccli for self-guided task execution"""
+    """Agent that uses docpilot for self-guided task execution"""
 
     def __init__(self, project_path, library_name):
         self.docs = DocCLITool(project_path, library_name)
@@ -508,7 +508,7 @@ class AutonomousAgent:
 def ensure_fresh_index(project_path, max_age_hours=24):
     """Rebuild index if stale"""
     stats_result = subprocess.run(
-        ['doccli', 'stats', '--json'],
+        ['docpilot', 'stats', '--json'],
         cwd=project_path,
         capture_output=True,
         text=True
@@ -588,23 +588,23 @@ def safe_query(library, task, project_path, fallback=None):
     """Query with error handling"""
     try:
         result = subprocess.run(
-            ['doccli', 'use', library, task, '--path', f'{project_path}/.doccli', '--json'],
+            ['docpilot', 'use', library, task, '--path', f'{project_path}/.docpilot', '--json'],
             capture_output=True,
             text=True,
             timeout=10
         )
 
         if result.returncode != 0:
-            print(f"⚠️  doccli error: {result.stderr}")
+            print(f"⚠️  docpilot error: {result.stderr}")
             return fallback
 
         return json.loads(result.stdout)
 
     except subprocess.TimeoutExpired:
-        print("⚠️  doccli query timed out")
+        print("⚠️  docpilot query timed out")
         return fallback
     except json.JSONDecodeError:
-        print("⚠️  Invalid JSON response from doccli")
+        print("⚠️  Invalid JSON response from docpilot")
         return fallback
     except Exception as e:
         print(f"⚠️  Unexpected error: {e}")
@@ -629,8 +629,8 @@ def safe_query(library, task, project_path, fallback=None):
 ## Testing Your Integration
 
 ```python
-def test_doccli_integration():
-    """Test suite for doccli integration"""
+def test_docpilot_integration():
+    """Test suite for docpilot integration"""
 
     project_path = '/path/to/test/project'
     library = 'TestProject'
@@ -641,7 +641,7 @@ def test_doccli_integration():
 
     # Test 2: Search returns results
     search_result = subprocess.run(
-        ['doccli', 'search', 'test', '--json'],
+        ['docpilot', 'search', 'test', '--json'],
         cwd=project_path,
         capture_output=True,
         text=True
@@ -664,11 +664,11 @@ def test_doccli_integration():
 
 ## Troubleshooting Integration Issues
 
-### Issue: "Command not found: doccli"
+### Issue: "Command not found: docpilot"
 
-**Solution:** Ensure doccli is in PATH or use absolute path:
+**Solution:** Ensure docpilot is in PATH or use absolute path:
 ```python
-DOCCLI_PATH = '/usr/local/bin/doccli'  # or full path
+DOCCLI_PATH = '/usr/local/bin/docpilot'  # or full path
 subprocess.run([DOCCLI_PATH, 'stats', ...])
 ```
 
@@ -692,6 +692,6 @@ subprocess.run([...], timeout=10)  # 10 second timeout
 
 ## Next Steps
 
-- See [Quick Start Guide](./doccli-quick-start.md) for basic usage
-- See [Best Practices](./doccli-best-practices.md) for optimization tips
+- See [Quick Start Guide](./docpilot-quick-start.md) for basic usage
+- See [Best Practices](./docpilot-best-practices.md) for optimization tips
 - Check [JSON Output Schema](./json_output_schema.md) for response formats

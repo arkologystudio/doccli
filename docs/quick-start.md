@@ -1,17 +1,17 @@
 # DocCLI Quick Start Guide
 
-Get started with doccli in 5 minutes.
+Get started with docpilot in 5 minutes.
 
-## What is doccli?
+## What is docpilot?
 
-doccli is a documentation indexing and retrieval CLI designed for AI agents. It creates searchable indexes of markdown documentation and provides natural language query capabilities with citation-backed answers.
+docpilot is a documentation indexing and retrieval CLI designed for AI agents. It creates searchable indexes of markdown documentation and provides natural language query capabilities with citation-backed answers.
 
 ## Installation
 
 ```bash
-npm install -g doccli
+npm install -g docpilot
 # or use directly with npx
-npx doccli --help
+npx docpilot --help
 ```
 
 ## Quick Start Workflow
@@ -23,18 +23,18 @@ Navigate to your project directory and build an index:
 ```bash
 cd /path/to/your/project
 
-doccli build \
+docpilot build \
   --src . \
   --library "YourProjectName" \
   --version "1.0.0" \
-  --out .doccli/index.json
+  --out .docpilot/index.json
 ```
 
 This scans all markdown files in your project and creates a searchable index.
 
 **Output:**
 ```
-Built index: .doccli/index.json
+Built index: .docpilot/index.json
 Docs: 35, sections: 229
 Source hash: sha256:abc123...
 ```
@@ -49,7 +49,7 @@ echo '{
   "library": "YourProjectName",
   "library_version": "1.0.0",
   "index_path": "index.json"
-}' > .doccli/doccli.json
+}' > .docpilot/docpilot.json
 ```
 
 ### Step 3: Explore Your Documentation
@@ -58,7 +58,7 @@ echo '{
 
 ```bash
 # Summary statistics
-doccli stats
+docpilot stats
 
 # Output:
 # YourProjectName@1.0.0
@@ -68,13 +68,13 @@ doccli stats
 # Built at: 2026-02-27T08:00:00.000Z
 
 # List all documents
-doccli list | head -20
+docpilot list | head -20
 ```
 
 #### Search for topics:
 
 ```bash
-doccli search "authentication" --max-results 5
+docpilot search "authentication" --max-results 5
 
 # Output:
 # Results for "authentication" in YourProjectName@1.0.0:
@@ -86,7 +86,7 @@ doccli search "authentication" --max-results 5
 #### Open a specific document section:
 
 ```bash
-doccli open "docs/auth-guide#oauth-setup"
+docpilot open "docs/auth-guide#oauth-setup"
 
 # Output:
 # docs/auth-guide#oauth-setup (docs/auth-guide.md:45)
@@ -99,7 +99,7 @@ doccli open "docs/auth-guide#oauth-setup"
 #### Get a citation:
 
 ```bash
-doccli cite "docs/auth-guide#oauth-setup"
+docpilot cite "docs/auth-guide#oauth-setup"
 
 # Output:
 # YourProjectName@1.0.0:docs/auth-guide#oauth-setup:45-67
@@ -111,8 +111,8 @@ doccli cite "docs/auth-guide#oauth-setup"
 Ask natural language questions and get citation-backed steps:
 
 ```bash
-doccli use "YourProjectName" "How do I set up authentication?" \
-  --path .doccli \
+docpilot use "YourProjectName" "How do I set up authentication?" \
+  --path .docpilot \
   --max-results 5
 
 # Output:
@@ -136,13 +136,13 @@ Use this workflow when the library is not installed locally and you want to rese
 ### Step A: Discover candidate libraries
 
 ```bash
-doccli discover "axios" --provider npm --max-results 5 --json
+docpilot discover "axios" --provider npm --max-results 5 --json
 ```
 
 ### Step B: Fetch and pin docs snapshot
 
 ```bash
-doccli fetch "npm:axios" --json
+docpilot fetch "npm:axios" --json
 ```
 
 The fetch response includes:
@@ -153,15 +153,15 @@ The fetch response includes:
 ### Step C: Build index from fetched docs with provenance
 
 ```bash
-doccli build \
+docpilot build \
   --src /path/to/fetched/docs \
   --library "axios" \
   --version "1.13.6" \
-  --source-manifest /path/to/.doccli/source.json \
-  --out .doccli/index.json
+  --source-manifest /path/to/.docpilot/source.json \
+  --out .docpilot/index.json
 ```
 
-Then create `.doccli/doccli.json` and use normal `search/open/cite/use`.
+Then create `.docpilot/docpilot.json` and use normal `search/open/cite/use`.
 
 ## Common Workflows
 
@@ -169,41 +169,41 @@ Then create `.doccli/doccli.json` and use normal `search/open/cite/use`.
 
 ```bash
 # 1. What's available?
-doccli stats
+docpilot stats
 
 # 2. Find relevant docs
-doccli search "deployment"
+docpilot search "deployment"
 
 # 3. Read the doc
-doccli open "docs/deployment-guide"
+docpilot open "docs/deployment-guide"
 
 # 4. Get citation for reference
-doccli cite "docs/deployment-guide#production"
+docpilot cite "docs/deployment-guide#production"
 ```
 
 ### AI Agent Integration
 
 ```bash
 # 1. Understand the corpus
-doccli stats --json | jq '.docs_count'
+docpilot stats --json | jq '.docs_count'
 
 # 2. Natural language query
-doccli use "MyProject" "How do I deploy to production?" \
+docpilot use "MyProject" "How do I deploy to production?" \
   --path . --json | jq '.steps[0].instruction'
 
 # 3. Follow related docs
-doccli open "docs/deployment-guide" --json | jq '.content'
+docpilot open "docs/deployment-guide" --json | jq '.content'
 ```
 
 ### Continuous Documentation
 
 ```bash
 # Update your docs, rebuild index
-doccli build --src . --library "MyProject" --version "1.0.1" --out .doccli/index.json
+docpilot build --src . --library "MyProject" --version "1.0.1" --out .docpilot/index.json
 
 # Update manifest version
-jq '.library_version = "1.0.1"' .doccli/doccli.json > .doccli/doccli.json.tmp
-mv .doccli/doccli.json.tmp .doccli/doccli.json
+jq '.library_version = "1.0.1"' .docpilot/docpilot.json > .docpilot/docpilot.json.tmp
+mv .docpilot/docpilot.json.tmp .docpilot/docpilot.json
 ```
 
 ## Command Reference
@@ -212,22 +212,22 @@ mv .doccli/doccli.json.tmp .doccli/doccli.json
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `build` | Create searchable index | `doccli build --src . --library "Foo" --version "1.0.0"` |
-| `list` | Show all indexed docs | `doccli list` |
-| `stats` | Show index statistics | `doccli stats` |
-| `search` | Keyword/phrase search | `doccli search "backup"` |
-| `open` | View document section | `doccli open "readme#installation"` |
-| `cite` | Get citation string | `doccli cite "readme#features"` |
-| `use` | Task-based query | `doccli use "Foo" "How do I...?"` |
-| `discover` | Find external docs/library candidates | `doccli discover "express" --provider npm` |
-| `fetch` | Snapshot external docs with pinned ref | `doccli fetch "npm:express"` |
+| `build` | Create searchable index | `docpilot build --src . --library "Foo" --version "1.0.0"` |
+| `list` | Show all indexed docs | `docpilot list` |
+| `stats` | Show index statistics | `docpilot stats` |
+| `search` | Keyword/phrase search | `docpilot search "backup"` |
+| `open` | View document section | `docpilot open "readme#installation"` |
+| `cite` | Get citation string | `docpilot cite "readme#features"` |
+| `use` | Task-based query | `docpilot use "Foo" "How do I...?"` |
+| `discover` | Find external docs/library candidates | `docpilot discover "express" --provider npm` |
+| `fetch` | Snapshot external docs with pinned ref | `docpilot fetch "npm:express"` |
 
 ### Common Flags
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--json` | Output as JSON | Human-readable |
-| `--index <file>` | Index file path | `.doccli/index.json` |
+| `--index <file>` | Index file path | `.docpilot/index.json` |
 | `--path <dir>` | Manifest search path | current dir + node_modules |
 | `--max-results <n>` | Limit results | 5 (`search`/`discover`), 3 (`use`) |
 | `--max-chars <n>` | Limit content length | 2000 |
@@ -239,13 +239,13 @@ All commands support `--json` for programmatic use:
 
 ```bash
 # Structured search results
-doccli search "api" --json | jq '.results[] | {heading, score}'
+docpilot search "api" --json | jq '.results[] | {heading, score}'
 
 # Task steps with confidence
-doccli use "Foo" "How to deploy?" --json | jq '.steps[] | {confidence, instruction}'
+docpilot use "Foo" "How to deploy?" --json | jq '.steps[] | {confidence, instruction}'
 
 # Index statistics
-doccli stats --json | jq '{docs: .docs_count, sections: .sections_count}'
+docpilot stats --json | jq '{docs: .docs_count, sections: .sections_count}'
 ```
 
 See [json_output_schema.md](./json_output_schema.md) for complete schemas.
@@ -257,19 +257,19 @@ See [json_output_schema.md](./json_output_schema.md) for complete schemas.
 The index can be regenerated, so keep it out of version control:
 
 ```bash
-echo ".doccli/index.json" >> .gitignore
+echo ".docpilot/index.json" >> .gitignore
 ```
 
 Keep the manifest in version control:
 ```bash
-git add .doccli/doccli.json
+git add .docpilot/docpilot.json
 ```
 
 ### 2. Use Relative Paths in CI
 
 ```bash
 # In CI, use relative paths
-doccli build --src . --library "$PROJECT_NAME" --version "$VERSION"
+docpilot build --src . --library "$PROJECT_NAME" --version "$VERSION"
 ```
 
 ### 3. Search Before Use
@@ -278,18 +278,18 @@ The `use` command is powerful but can be overkill for simple lookups:
 
 ```bash
 # Simple lookup: use search
-doccli search "configuration"
+docpilot search "configuration"
 
 # Complex task: use use
-doccli use "MyProject" "How do I configure authentication with OAuth?"
+docpilot use "MyProject" "How do I configure authentication with OAuth?"
 ```
 
 ### 4. Chain Commands
 
 ```bash
 # Find doc, then open it
-DOC_ID=$(doccli search "deploy" --json | jq -r '.results[0].doc_id')
-doccli open "$DOC_ID"
+DOC_ID=$(docpilot search "deploy" --json | jq -r '.results[0].doc_id')
+docpilot open "$DOC_ID"
 ```
 
 ### 5. Related Docs Are Gold
@@ -297,7 +297,7 @@ doccli open "$DOC_ID"
 The `use` command returns related docs - follow them for deeper understanding:
 
 ```bash
-doccli use "Foo" "How do I backup?" --json | jq -r '.related_docs[]'
+docpilot use "Foo" "How do I backup?" --json | jq -r '.related_docs[]'
 # Output: docs/backup-guide, docs/restore-guide, readme
 ```
 
@@ -312,11 +312,11 @@ RESOLUTION_FAILED: Could not locate docs manifest for library MyProject
 
 **Solution:**
 ```bash
-# Ensure doccli.json exists
-ls .doccli/doccli.json
+# Ensure docpilot.json exists
+ls .docpilot/docpilot.json
 
 # Or create it:
-echo '{"schema_version":"1","library":"MyProject","library_version":"1.0.0","index_path":"index.json"}' > .doccli/doccli.json
+echo '{"schema_version":"1","library":"MyProject","library_version":"1.0.0","index_path":"index.json"}' > .docpilot/docpilot.json
 ```
 
 ### "No section found for doc_id"
@@ -329,26 +329,26 @@ REF_NOT_FOUND: No section found for my-doc#my-section
 **Solution:**
 ```bash
 # List available docs to find the correct ID
-doccli list | grep "my-doc"
+docpilot list | grep "my-doc"
 
 # Or search for the topic
-doccli search "my topic"
+docpilot search "my topic"
 ```
 
 ### Empty Search Results
 
 ```bash
 # Check what's indexed
-doccli stats
+docpilot stats
 
 # Rebuild if needed
-doccli build --src . --library "MyProject" --version "1.0.0"
+docpilot build --src . --library "MyProject" --version "1.0.0"
 ```
 
 ## Next Steps
 
-- Read the [Agent Integration Guide](./doccli-agent-integration.md) for AI agent workflows
-- Read [Best Practices](./doccli-best-practices.md) for optimization tips
+- Read the [Agent Integration Guide](./docpilot-agent-integration.md) for AI agent workflows
+- Read [Best Practices](./docpilot-best-practices.md) for optimization tips
 - Check [JSON Output Schema](./json_output_schema.md) for programmatic integration
 
 ## Examples
@@ -357,16 +357,16 @@ doccli build --src . --library "MyProject" --version "1.0.0"
 
 ```bash
 # Morning: check what changed
-doccli stats
+docpilot stats
 
 # Find deployment docs
-doccli search "production deploy" --max-results 3
+docpilot search "production deploy" --max-results 3
 
 # Read the guide
-doccli open "docs/deployment#production"
+docpilot open "docs/deployment#production"
 
 # Share citation with team
-doccli cite "docs/deployment#production"
+docpilot cite "docs/deployment#production"
 # Copy: MyProject@1.0.0:docs/deployment#production:45-67
 ```
 
@@ -376,7 +376,7 @@ doccli cite "docs/deployment#production"
 # Agent receives task: "Deploy to production"
 
 # 1. Find relevant docs
-doccli use "MyProject" "How do I deploy to production?" --path .doccli --json
+docpilot use "MyProject" "How do I deploy to production?" --path .docpilot --json
 
 # 2. Extract high-confidence steps
 # {
@@ -387,7 +387,7 @@ doccli use "MyProject" "How do I deploy to production?" --path .doccli --json
 # }
 
 # 3. Follow related docs for details
-doccli open "docs/deployment-guide" --json
+docpilot open "docs/deployment-guide" --json
 ```
 
 ### Example 3: Documentation as Code
@@ -401,10 +401,10 @@ set -e
 VERSION=$(cat VERSION)
 
 # Rebuild docs index
-doccli build --src . --library "MyProject" --version "$VERSION" --out .doccli/index.json
+docpilot build --src . --library "MyProject" --version "$VERSION" --out .docpilot/index.json
 
 # Update manifest
-cat > .doccli/doccli.json <<EOF
+cat > .docpilot/docpilot.json <<EOF
 {
   "schema_version": "1",
   "library": "MyProject",
@@ -414,13 +414,13 @@ cat > .doccli/doccli.json <<EOF
 EOF
 
 # Validate index
-doccli stats --json | jq -e '.docs_count > 0'
+docpilot stats --json | jq -e '.docs_count > 0'
 
 echo "Documentation index built successfully"
 ```
 
 ## Support
 
-- Documentation: [GitHub Repo](https://github.com/your-org/doccli)
-- Issues: [GitHub Issues](https://github.com/your-org/doccli/issues)
+- Documentation: [GitHub Repo](https://github.com/your-org/docpilot)
+- Issues: [GitHub Issues](https://github.com/your-org/docpilot/issues)
 - Schema Reference: [json_output_schema.md](./json_output_schema.md)

@@ -195,7 +195,7 @@ function selectSection(index, rawRef) {
       EXIT_CODES.REF_NOT_FOUND,
       "REF_NOT_FOUND",
       `No section found for ${rawRef}`,
-      "Run doccli search with a related query"
+      "Run docpilot search with a related query"
     );
   }
 
@@ -578,13 +578,13 @@ function readManifest(manifestPath) {
 function findManifestForLibrary(library, explicitPath = "") {
   const candidates = [];
   const pushCandidateSet = (baseDir) => {
-    candidates.push(path.resolve(baseDir, "doccli.json"));
+    candidates.push(path.resolve(baseDir, "docpilot.json"));
     candidates.push(path.resolve(baseDir, "manifest.json"));
-    candidates.push(path.resolve(baseDir, ".doccli", "doccli.json"));
-    candidates.push(path.resolve(baseDir, ".doccli", "manifest.json"));
-    candidates.push(path.resolve(baseDir, library, "doccli.json"));
+    candidates.push(path.resolve(baseDir, ".docpilot", "docpilot.json"));
+    candidates.push(path.resolve(baseDir, ".docpilot", "manifest.json"));
+    candidates.push(path.resolve(baseDir, library, "docpilot.json"));
     candidates.push(path.resolve(baseDir, library, "manifest.json"));
-    candidates.push(path.resolve(baseDir, library, ".doccli", "doccli.json"));
+    candidates.push(path.resolve(baseDir, library, ".docpilot", "docpilot.json"));
   };
 
   if (explicitPath) {
@@ -609,9 +609,9 @@ function findManifestForLibrary(library, explicitPath = "") {
 
   let current = process.cwd();
   while (true) {
-    candidates.push(path.join(current, "node_modules", library, "doccli.json"));
+    candidates.push(path.join(current, "node_modules", library, "docpilot.json"));
     candidates.push(path.join(current, "node_modules", library, "manifest.json"));
-    candidates.push(path.join(current, "node_modules", library, ".doccli", "doccli.json"));
+    candidates.push(path.join(current, "node_modules", library, ".docpilot", "docpilot.json"));
     const parent = path.dirname(current);
     if (parent === current) {
       break;
@@ -631,12 +631,12 @@ function findManifestForLibrary(library, explicitPath = "") {
     EXIT_CODES.RESOLUTION_FAILED,
     "RESOLUTION_FAILED",
     `Could not locate docs manifest for library ${library}. Checked: ${searched}${deduped.length > 8 ? ", ..." : ""}`,
-    "Install docs artifact, emit doccli.json, set DOCCLI_PATHS, or pass --path"
+    "Install docs artifact, emit docpilot.json, set DOCCLI_PATHS, or pass --path"
   );
 }
 
 function resolveIndexForCommand(flags) {
-  return flags.index ? path.resolve(String(flags.index)) : path.resolve(".doccli/index.json");
+  return flags.index ? path.resolve(String(flags.index)) : path.resolve(".docpilot/index.json");
 }
 
 export function runList(flags) {
@@ -687,7 +687,7 @@ export function runStats(flags) {
 
 export function runBuild(flags) {
   const srcDir = requireFlag(flags, "src");
-  const outFile = flags.out ? String(flags.out) : ".doccli/index.json";
+  const outFile = flags.out ? String(flags.out) : ".docpilot/index.json";
   const library = requireFlag(flags, "library");
   const version = requireFlag(flags, "version");
   const sourceManifestPath = flags["source-manifest"] ? String(flags["source-manifest"]) : "";
@@ -698,10 +698,10 @@ export function runBootstrap(flags) {
   const srcDir = requireFlag(flags, "src");
   const library = requireFlag(flags, "library");
   const version = requireFlag(flags, "version");
-  const docsOutDir = flags["docs-out"] ? String(flags["docs-out"]) : ".doccli/generated-docs";
-  const outFile = flags.out ? String(flags.out) : ".doccli/index.json";
+  const docsOutDir = flags["docs-out"] ? String(flags["docs-out"]) : ".docpilot/generated-docs";
+  const outFile = flags.out ? String(flags.out) : ".docpilot/index.json";
   const shouldEmitManifest = Boolean(flags["emit-manifest"]);
-  const manifestOut = flags["manifest-out"] ? String(flags["manifest-out"]) : "doccli.json";
+  const manifestOut = flags["manifest-out"] ? String(flags["manifest-out"]) : "docpilot.json";
 
   const generated = generateBootstrapDocs({
     srcDir,
@@ -733,7 +733,7 @@ export function runBootstrap(flags) {
       schema_version: "1",
       library,
       library_version: version,
-      index_path: relativeIndexPath || ".doccli/index.json",
+      index_path: relativeIndexPath || ".docpilot/index.json",
       built_at: new Date().toISOString()
     };
 
@@ -767,7 +767,7 @@ export function runSearch(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing query text for search",
-      "Usage: doccli search <query>"
+      "Usage: docpilot search <query>"
     );
   }
 
@@ -827,7 +827,7 @@ export function runOpen(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing reference for open",
-      "Usage: doccli open <doc_id#anchor>"
+      "Usage: docpilot open <doc_id#anchor>"
     );
   }
 
@@ -856,7 +856,7 @@ export function runCite(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing reference for cite",
-      "Usage: doccli cite <doc_id#anchor>"
+      "Usage: docpilot cite <doc_id#anchor>"
     );
   }
 
@@ -872,7 +872,7 @@ export async function runDiscover(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing query text for discover",
-      "Usage: doccli discover <query>"
+      "Usage: docpilot discover <query>"
     );
   }
 
@@ -892,7 +892,7 @@ export async function runFetch(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing selector for fetch",
-      "Usage: doccli fetch <selector>"
+      "Usage: docpilot fetch <selector>"
     );
   }
 
@@ -909,7 +909,7 @@ export async function runPrep(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing query or selector for prep",
-      "Usage: doccli prep <query_or_selector_or_url>"
+      "Usage: docpilot prep <query_or_selector_or_url>"
     );
   }
 
@@ -943,9 +943,9 @@ export async function runPrep(positionals, flags) {
     flags
   });
 
-  const outRoot = flags.path ? path.resolve(String(flags.path)) : path.resolve(".doccli");
+  const outRoot = flags.path ? path.resolve(String(flags.path)) : path.resolve(".docpilot");
   const outFile = flags.out ? path.resolve(String(flags.out)) : path.join(outRoot, "index.json");
-  const manifestPath = flags["manifest-out"] ? path.resolve(String(flags["manifest-out"])) : path.join(outRoot, "doccli.json");
+  const manifestPath = flags["manifest-out"] ? path.resolve(String(flags["manifest-out"])) : path.join(outRoot, "docpilot.json");
   const library = flags.library ? String(flags.library) : fetchResult.library;
   const version = flags.version ? String(flags.version) : fetchResult.resolved_ref;
 
@@ -991,7 +991,7 @@ export async function runSurface(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing selector for surface",
-      "Usage: doccli surface <selector>"
+      "Usage: docpilot surface <selector>"
     );
   }
 
@@ -1006,7 +1006,7 @@ export async function runFn(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing selector or symbol for fn command",
-      "Usage: doccli fn <selector#symbol_query>"
+      "Usage: docpilot fn <selector#symbol_query>"
     );
   }
 
@@ -1017,7 +1017,7 @@ export async function runFn(positionals, flags) {
       EXIT_CODES.REF_NOT_FOUND,
       "REF_NOT_FOUND",
       `No symbol found for ${symbolQuery}`,
-      "Run doccli surface and inspect available symbols"
+      "Run docpilot surface and inspect available symbols"
     );
   }
 
@@ -1102,7 +1102,7 @@ export async function runUseMulti(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing task or --libs values for use multi-library mode",
-      "Usage: doccli use \"<task>\" --libs <selector1,selector2,...>"
+      "Usage: docpilot use \"<task>\" --libs <selector1,selector2,...>"
     );
   }
 
@@ -1291,7 +1291,7 @@ async function runUseFederatedDocs(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing task or --indexes for federated use mode",
-      "Usage: doccli use \"<task>\" --indexes <index1,index2,...>"
+      "Usage: docpilot use \"<task>\" --indexes <index1,index2,...>"
     );
   }
 
@@ -1359,7 +1359,7 @@ async function runUseLegacy(positionals, flags) {
       EXIT_CODES.INVALID_ARGS,
       "INVALID_ARGS",
       "Missing library or task for use command",
-      "Usage: doccli use <library> \"<task>\""
+      "Usage: docpilot use <library> \"<task>\""
     );
   }
 
@@ -1385,7 +1385,7 @@ async function runUseLegacy(positionals, flags) {
 
     const healed = await runPrep([library], {
       ...flags,
-      path: flags.path ? String(flags.path) : ".doccli"
+      path: flags.path ? String(flags.path) : ".docpilot"
     });
     manifestPath = healed.manifest_path;
     manifest = readManifest(manifestPath);

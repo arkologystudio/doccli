@@ -1,6 +1,6 @@
 # DocCLI Best Practices
 
-Optimization tips and decision guide for using doccli effectively.
+Optimization tips and decision guide for using docpilot effectively.
 
 ## When to Use Which Command
 
@@ -10,24 +10,24 @@ Optimization tips and decision guide for using doccli effectively.
 Need documentation info?
 │
 ├─ Library not installed yet?
-│  └─> doccli discover "<library>" → doccli fetch "<selector>" → doccli build --source-manifest ...
+│  └─> docpilot discover "<library>" → docpilot fetch "<selector>" → docpilot build --source-manifest ...
 │
 ├─ Want to know what's available?
-│  └─> doccli stats / doccli list
+│  └─> docpilot stats / docpilot list
 │
 ├─ Have specific question/task?
 │  │
 │  ├─ Simple topic lookup? (e.g., "authentication")
-│  │  └─> doccli search "authentication"
+│  │  └─> docpilot search "authentication"
 │  │
 │  └─ Complex task? (e.g., "How do I deploy with rollback?")
-│     └─> doccli use "MyProject" "How do I deploy with rollback?"
+│     └─> docpilot use "MyProject" "How do I deploy with rollback?"
 │
 ├─ Know exact doc location?
-│  └─> doccli open "docs/guide#section"
+│  └─> docpilot open "docs/guide#section"
 │
 └─ Need citation for reference?
-   └─> doccli cite "docs/guide#section"
+   └─> docpilot cite "docs/guide#section"
 ```
 
 ### Command Selection Guide
@@ -49,22 +49,22 @@ Need documentation info?
 ✅ **Simple keyword lookup**
 ```bash
 # ✓ Good use of search
-doccli search "configuration"
-doccli search "API endpoints"
-doccli search "error codes"
+docpilot search "configuration"
+docpilot search "API endpoints"
+docpilot search "error codes"
 ```
 
 ✅ **Exploring unfamiliar codebase**
 ```bash
 # First, see what's there
-doccli search "architecture"
-doccli search "getting started"
+docpilot search "architecture"
+docpilot search "getting started"
 ```
 
 ✅ **Finding specific term occurrences**
 ```bash
 # Find all mentions of a concept
-doccli search "rate limiting"
+docpilot search "rate limiting"
 ```
 
 ### Use `use` when:
@@ -72,21 +72,21 @@ doccli search "rate limiting"
 ✅ **Task-oriented questions**
 ```bash
 # ✓ Good use of 'use'
-doccli use "MyProject" "How do I deploy to production?"
-doccli use "MyProject" "What are the backup procedures?"
-doccli use "MyProject" "How do I troubleshoot connection errors?"
+docpilot use "MyProject" "How do I deploy to production?"
+docpilot use "MyProject" "What are the backup procedures?"
+docpilot use "MyProject" "How do I troubleshoot connection errors?"
 ```
 
 ✅ **Need actionable steps**
 ```bash
 # When you want citation-backed instructions
-doccli use "MyProject" "How do I configure SSL certificates?"
+docpilot use "MyProject" "How do I configure SSL certificates?"
 ```
 
 ✅ **Want related context**
 ```bash
 # 'use' returns related_docs for exploration
-doccli use "MyProject" "How does authentication work?"
+docpilot use "MyProject" "How does authentication work?"
 # Returns related: docs/auth-guide, docs/security, docs/api-reference
 ```
 
@@ -95,19 +95,19 @@ doccli use "MyProject" "How does authentication work?"
 ❌ **Don't use `use` for simple lookups**
 ```bash
 # ✗ Bad: overkill for simple lookup
-doccli use "MyProject" "config file"
+docpilot use "MyProject" "config file"
 
 # ✓ Better: use search
-doccli search "config file"
+docpilot search "config file"
 ```
 
 ❌ **Don't use `search` for complex questions**
 ```bash
 # ✗ Bad: won't get actionable answer
-doccli search "how to deploy with zero downtime and rollback capability"
+docpilot search "how to deploy with zero downtime and rollback capability"
 
 # ✓ Better: use 'use'
-doccli use "MyProject" "How do I deploy with zero downtime and rollback?"
+docpilot use "MyProject" "How do I deploy with zero downtime and rollback?"
 ```
 
 ## Agent Workflow Patterns
@@ -118,12 +118,12 @@ doccli use "MyProject" "How do I deploy with zero downtime and rollback?"
 
 ```python
 # Step 1: Discover (once per session)
-stats = run_cmd('doccli stats --json')
+stats = run_cmd('docpilot stats --json')
 if stats['docs_count'] == 0:
     fallback_to_file_search()
 
 # Step 2: Query
-response = run_cmd('doccli use "Project" "task description" --json')
+response = run_cmd('docpilot use "Project" "task description" --json')
 
 # Step 3: Execute based on confidence
 for step in response['steps']:
@@ -141,12 +141,12 @@ for step in response['steps']:
 
 ```python
 # Step 1: Broad search
-results = run_cmd('doccli search "deployment" --json')
+results = run_cmd('docpilot search "deployment" --json')
 
 # Step 2: Open top results
 docs = []
 for result in results['results'][:3]:
-    doc = run_cmd(f'doccli open "{result["doc_id"]}" --json')
+    doc = run_cmd(f'docpilot open "{result["doc_id"]}" --json')
     docs.append(doc)
 
 # Step 3: Synthesize information
@@ -159,13 +159,13 @@ for result in results['results'][:3]:
 
 ```python
 # Step 1: Initial query
-response = run_cmd('doccli use "Project" "authentication flow" --json')
+response = run_cmd('docpilot use "Project" "authentication flow" --json')
 
 # Step 2: Check confidence
 if response['confidence'] == 'partial':
     # Step 3: Explore related docs
     for doc_id in response['related_docs']:
-        doc = run_cmd(f'doccli open "{doc_id}" --json')
+        doc = run_cmd(f'docpilot open "{doc_id}" --json')
         # Build knowledge graph
 ```
 
@@ -186,20 +186,20 @@ if response['confidence'] == 'partial':
 
 ```bash
 # ✗ Slow: using 'use' just to check if docs exist
-doccli use "MyProject" "what is available" --json
+docpilot use "MyProject" "what is available" --json
 
 # ✓ Fast: use stats
-doccli stats --json
+docpilot stats --json
 ```
 
 ### 2. Limit Result Sets
 
 ```bash
 # Faster: limit results
-doccli search "deploy" --max-results 3
+docpilot search "deploy" --max-results 3
 
 # Slower: default (10 results)
-doccli search "deploy"
+docpilot search "deploy"
 ```
 
 ### 3. Cache Repeated Queries
@@ -224,11 +224,11 @@ result2 = cached_query("MyProject", "How to deploy?")
 
 ```bash
 # Slower: parse human-readable output
-output=$(doccli search "test")
+output=$(docpilot search "test")
 # Parse text output...
 
 # Faster: use JSON
-output=$(doccli search "test" --json)
+output=$(docpilot search "test" --json)
 # Parse JSON (structured, predictable)
 ```
 
@@ -236,14 +236,14 @@ output=$(doccli search "test" --json)
 
 ```bash
 # ✗ Inefficient: multiple separate calls
-doccli search "backup" --json
-doccli search "restore" --json
-doccli search "recovery" --json
+docpilot search "backup" --json
+docpilot search "restore" --json
+docpilot search "recovery" --json
 
 # ✓ Better: combined query
-doccli search "backup restore recovery" --json
+docpilot search "backup restore recovery" --json
 # Or use 'use' for related concepts:
-doccli use "MyProject" "backup and restore procedures" --json
+docpilot use "MyProject" "backup and restore procedures" --json
 ```
 
 ## Confidence Score Interpretation
@@ -374,12 +374,12 @@ def execute_with_audit_trail(step):
 1. **After documentation changes**
    ```bash
    # In git hooks or CI
-   doccli build --src . --library "MyProject" --version "$(cat VERSION)"
+   docpilot build --src . --library "MyProject" --version "$(cat VERSION)"
    ```
 
 2. **When stats show staleness**
    ```python
-   stats = run_cmd('doccli stats --json')
+   stats = run_cmd('docpilot stats --json')
    built_at = datetime.fromisoformat(stats['built_at'])
    age_hours = (datetime.now(timezone.utc) - built_at).total_seconds() / 3600
 
@@ -391,7 +391,7 @@ def execute_with_audit_trail(step):
    ```bash
    # On release
    NEW_VERSION="1.1.0"
-   doccli build --src . --library "MyProject" --version "$NEW_VERSION"
+   docpilot build --src . --library "MyProject" --version "$NEW_VERSION"
    ```
 
 ### Index Size Considerations
@@ -409,7 +409,7 @@ def execute_with_audit_trail(step):
 
 ```bash
 # Full rebuild (simple, always works)
-doccli build --src . --library "MyProject" --version "1.0.0"
+docpilot build --src . --library "MyProject" --version "1.0.0"
 
 # For large repos, consider:
 # 1. Only rebuild when docs/ changes (in CI)
@@ -423,12 +423,12 @@ doccli build --src . --library "MyProject" --version "1.0.0"
 
 ```python
 def query_with_fallback(library, task):
-    """Try doccli, fall back to file search"""
+    """Try docpilot, fall back to file search"""
     try:
         response = query_documentation(library, task)
         return response
     except Exception as e:
-        print(f"⚠️  doccli failed: {e}")
+        print(f"⚠️  docpilot failed: {e}")
         print("Falling back to file search...")
         return fallback_file_search(task)
 ```
@@ -439,7 +439,7 @@ def query_with_fallback(library, task):
 def validate_index(project_path):
     """Check if index is usable"""
     try:
-        stats = run_cmd('doccli stats --json', cwd=project_path)
+        stats = run_cmd('docpilot stats --json', cwd=project_path)
 
         if stats['docs_count'] == 0:
             raise ValueError("Index is empty")
@@ -463,16 +463,16 @@ def validate_index(project_path):
 def safe_open_doc(doc_id):
     """Open document with error handling"""
     try:
-        result = run_cmd(f'doccli open "{doc_id}" --json')
+        result = run_cmd(f'docpilot open "{doc_id}" --json')
         return result
     except subprocess.CalledProcessError as e:
         if 'REF_NOT_FOUND' in e.stderr:
             # Try search as fallback
             search_term = doc_id.split('#')[0]
-            results = run_cmd(f'doccli search "{search_term}" --json')
+            results = run_cmd(f'docpilot search "{search_term}" --json')
             if results['results']:
                 # Return closest match
-                return run_cmd(f'doccli open "{results["results"][0]["doc_id"]}" --json')
+                return run_cmd(f'docpilot open "{results["results"][0]["doc_id"]}" --json')
         raise
 ```
 
@@ -511,7 +511,7 @@ class MultiProjectDocs:
         for name, project in self.projects.items():
             try:
                 result = run_cmd(
-                    f'doccli search "{keyword}" --json',
+                    f'docpilot search "{keyword}" --json',
                     cwd=project['path']
                 )
                 results[name] = result
@@ -524,11 +524,11 @@ class MultiProjectDocs:
 
 ```bash
 # Set up search paths for multiple projects
-export DOCCLI_PATHS="/path/to/project1/.doccli:/path/to/project2/.doccli"
+export DOCCLI_PATHS="/path/to/project1/.docpilot:/path/to/project2/.docpilot"
 
 # Now 'use' command can find docs for any library
-doccli use "Project1" "task..."
-doccli use "Project2" "task..."
+docpilot use "Project1" "task..."
+docpilot use "Project2" "task..."
 ```
 
 ## Testing Your Documentation
@@ -537,7 +537,7 @@ doccli use "Project2" "task..."
 
 ```bash
 # Check stats
-doccli stats --json | jq '{
+docpilot stats --json | jq '{
   docs: .docs_count,
   sections: .sections_count,
   avg_sections_per_doc: .sections_per_doc,
@@ -562,7 +562,7 @@ common_queries=(
 
 for query in "${common_queries[@]}"; do
   echo "Testing: $query"
-  result=$(doccli use "MyProject" "$query" --json)
+  result=$(docpilot use "MyProject" "$query" --json)
   confidence=$(echo "$result" | jq -r '.confidence')
   steps=$(echo "$result" | jq -r '.steps | length')
 
@@ -578,12 +578,12 @@ done
 
 ```bash
 # Verify citations are reachable
-doccli use "MyProject" "How to deploy?" --json | \
+docpilot use "MyProject" "How to deploy?" --json | \
   jq -r '.steps[].citations[]' | \
   while read citation; do
     # Extract doc_id#anchor from citation
     ref=$(echo "$citation" | cut -d: -f2)
-    doccli open "$ref" > /dev/null 2>&1
+    docpilot open "$ref" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
       echo "✅ $ref"
     else
@@ -598,14 +598,14 @@ doccli use "MyProject" "How to deploy?" --json | \
 
 ```python
 # ✗ Bad: using 'use' for everything
-doccli use "Project" "version"  # Overkill
-doccli use "Project" "readme"   # Just open it
-doccli use "Project" "config"   # Just search
+docpilot use "Project" "version"  # Overkill
+docpilot use "Project" "readme"   # Just open it
+docpilot use "Project" "config"   # Just search
 
 # ✓ Better: right tool for the job
-doccli stats  # version is in stats
-doccli open "readme"  # direct access
-doccli search "config"  # quick lookup
+docpilot stats  # version is in stats
+docpilot open "readme"  # direct access
+docpilot search "config"  # quick lookup
 ```
 
 ### ❌ Pitfall 2: Ignoring Confidence Scores
@@ -651,18 +651,18 @@ if index_age_hours() > 24:
 
 ```python
 # ✗ Bad: assuming success
-result = subprocess.run(['doccli', 'use', ...])
+result = subprocess.run(['docpilot', 'use', ...])
 data = json.loads(result.stdout)
 
 # ✓ Better: handle errors
 try:
-    result = subprocess.run(['doccli', 'use', ...],
+    result = subprocess.run(['docpilot', 'use', ...],
                           capture_output=True,
                           timeout=10,
                           check=True)
     data = json.loads(result.stdout)
 except subprocess.CalledProcessError as e:
-    handle_doccli_error(e)
+    handle_docpilot_error(e)
 except json.JSONDecodeError:
     handle_invalid_json()
 except subprocess.TimeoutExpired:
@@ -675,19 +675,19 @@ except subprocess.TimeoutExpired:
 
 ```
 1. First time with a codebase?
-   └─> doccli stats (see what's available)
+   └─> docpilot stats (see what's available)
 
 2. Looking for something specific?
-   └─> doccli search "keyword"
+   └─> docpilot search "keyword"
 
 3. Need to do a task?
-   └─> doccli use "Project" "How to..."
+   └─> docpilot use "Project" "How to..."
 
 4. Want full document?
-   └─> doccli open "doc-id"
+   └─> docpilot open "doc-id"
 
 5. Need to cite?
-   └─> doccli cite "doc-id#section"
+   └─> docpilot cite "doc-id#section"
 ```
 
 ### Golden Rules
@@ -703,6 +703,6 @@ except subprocess.TimeoutExpired:
 
 ## Next Steps
 
-- See [Quick Start Guide](./doccli-quick-start.md) for getting started
-- See [Agent Integration Guide](./doccli-agent-integration.md) for AI agent workflows
+- See [Quick Start Guide](./docpilot-quick-start.md) for getting started
+- See [Agent Integration Guide](./docpilot-agent-integration.md) for AI agent workflows
 - Check [JSON Output Schema](./json_output_schema.md) for response formats
