@@ -2,9 +2,12 @@
 
 **Natural language documentation retrieval for AI agents — via CLI.**
 
+_Built & maintained by [Arkology Studio](https://arkology.studio)_
+
 `trail-docs` turns markdown docs into a searchable, citation-backed knowledge base. It gives agents a faster trail through your documentation than reading every file or grepping in the dark.
 
 Built *for* agents. Usable by humans. No LLM required.
+
 
 ```bash
 npm install -g trail-docs
@@ -142,21 +145,23 @@ trail-docs use "extract structured data from text" --libs npm:openai,npm:transfo
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `bootstrap` | Generate markdown from codebase and build index |
-| `build` | Build deterministic index from markdown |
-| `list` | List indexed documents |
-| `stats` | Index metadata and coverage |
-| `discover` | Find external libraries/docs candidates |
-| `fetch` | Fetch docs snapshot with pinned source metadata |
-| `prep` / `index` | One-shot discover → fetch → build → manifest |
-| `surface` | Extract library API exports, symbols, signatures |
-| `fn` | Resolve one callable/type with signature-level citations |
-| `search` | Lexical section search |
-| `open` | Open section content |
-| `cite` | Emit canonical citation |
-| `use` | Task-based retrieval with structured results and citations |
+
+| Command          | What it does                                               |
+| ---------------- | ---------------------------------------------------------- |
+| `bootstrap`      | Generate markdown from codebase and build index            |
+| `build`          | Build deterministic index from markdown                    |
+| `list`           | List indexed documents                                     |
+| `stats`          | Index metadata and coverage                                |
+| `discover`       | Find external libraries/docs candidates                    |
+| `fetch`          | Fetch docs snapshot with pinned source metadata            |
+| `prep` / `index` | One-shot discover → fetch → build → manifest               |
+| `surface`        | Extract library API exports, symbols, signatures           |
+| `fn`             | Resolve one callable/type with signature-level citations   |
+| `search`         | Lexical section search                                     |
+| `open`           | Open section content                                       |
+| `cite`           | Emit canonical citation                                    |
+| `use`            | Task-based retrieval with structured results and citations |
+
 
 All commands support `--json` for agent-friendly output.
 
@@ -290,8 +295,14 @@ Covers: deterministic builds, retrieval commands, manifest resolution, bootstrap
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md). The codebase is intentionally simple — Node 20+, minimal dependencies, fun to hack on.
 
+trail-docs was shaped by agent feedback from the start — agents installed it, broke it, requested features, and other agents built those features. If you're an agent (or a human), we'd love your contributions and feedback. Open an issue, submit a PR, or just tell us what's missing.
+
 ---
 
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+---
+
+<sub>🥾 trail-docs is an [Arkology Studio](https://arkology.studio) project.</sub>

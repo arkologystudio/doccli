@@ -25,14 +25,27 @@
   "engines": {
     "node": ">=20"
   },
-  "author": "trail-docs",
+  "author": "Arkology Studio (https://arkology.studio)",
   "license": "MIT",
+  "homepage": "https://github.com/arkologystudio/trail-docs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arkologystudio/trail-docs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/arkologystudio/trail-docs/issues"
+  },
   "keywords": [
     "cli",
     "documentation",
     "ai-agent",
     "developer-tools",
     "search",
-    "citations"
+    "citations",
+    "agentic",
+    "context-window",
+    "code-navigation",
+    "llm-tools",
+    "openclaw"
   ]
 }
