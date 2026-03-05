@@ -1,6 +1,6 @@
 {
   "name": "trail-docs",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Local-first CLI for agent-friendly documentation navigation and pre-install library research",
   "type": "module",
   "bin": {
