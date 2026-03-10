@@ -62,6 +62,13 @@ export function computeToolAggregate(records) {
     const comprehension = okRows.map((entry) => toNumber(entry.comprehension_score));
     const tokens = okRows.map((entry) => toNumber(entry.total_tokens));
     const latency = okRows.map((entry) => toNumber(entry.total_latency_ms));
+    const firstHopPrecision = okRows.map((entry) => toNumber(entry.first_hop_precision_at_k));
+    const coverage2 = okRows.map((entry) => toNumber(entry.coverage_after_2_hops));
+    const coverage3 = okRows.map((entry) => toNumber(entry.coverage_after_3_hops));
+    const tokensPerPoint = okRows.map((entry) => toNumber(entry.tokens_per_required_point)).filter((entry) => entry > 0);
+    const duplicateRatio = okRows.map((entry) => toNumber(entry.duplicate_context_ratio));
+    const citationPrecision = okRows.map((entry) => toNumber(entry.citation_precision_line_level));
+    const abstainRate = rows.map((entry) => toNumber(entry.abstain_when_unknown_rate));
 
     aggregates.push({
       tool,
@@ -73,7 +80,14 @@ export function computeToolAggregate(records) {
       mean_total_tokens: round(mean(tokens)),
       p95_total_tokens: round(percentile(tokens, 95)),
       mean_total_latency_ms: round(mean(latency)),
-      p95_total_latency_ms: round(percentile(latency, 95))
+      p95_total_latency_ms: round(percentile(latency, 95)),
+      mean_first_hop_precision_at_k: round(mean(firstHopPrecision)),
+      mean_coverage_after_2_hops: round(mean(coverage2)),
+      mean_coverage_after_3_hops: round(mean(coverage3)),
+      mean_tokens_per_required_point: round(mean(tokensPerPoint)),
+      mean_duplicate_context_ratio: round(mean(duplicateRatio)),
+      mean_citation_precision_line_level: round(mean(citationPrecision)),
+      mean_abstain_when_unknown_rate: round(mean(abstainRate))
     });
   }
 
@@ -166,12 +180,12 @@ export function toMarkdown(summary, records) {
   lines.push("## Tool Scoreboard");
   lines.push("");
   lines.push(
-    "| Tool | Success Rate | Mean Comp. | Median Comp. | Mean Tokens | P95 Tokens | Mean Latency (ms) | P95 Latency (ms) |"
+    "| Tool | Success Rate | Mean Comp. | Mean 1st Hop P@K | Mean Cov@2 | Mean Cov@3 | Mean Tokens | P95 Tokens | Mean Latency (ms) | P95 Latency (ms) | Mean Dup Ratio | Mean Citation Precision |"
   );
-  lines.push("|---|---:|---:|---:|---:|---:|---:|---:|");
+  lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
   for (const row of summary.per_tool) {
     lines.push(
-      `| ${row.tool} | ${row.success_rate} | ${row.mean_comprehension} | ${row.median_comprehension} | ${row.mean_total_tokens} | ${row.p95_total_tokens} | ${row.mean_total_latency_ms} | ${row.p95_total_latency_ms} |`
+      `| ${row.tool} | ${row.success_rate} | ${row.mean_comprehension} | ${row.mean_first_hop_precision_at_k} | ${row.mean_coverage_after_2_hops} | ${row.mean_coverage_after_3_hops} | ${row.mean_total_tokens} | ${row.p95_total_tokens} | ${row.mean_total_latency_ms} | ${row.p95_total_latency_ms} | ${row.mean_duplicate_context_ratio} | ${row.mean_citation_precision_line_level} |`
     );
   }
   lines.push("");

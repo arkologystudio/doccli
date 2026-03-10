@@ -107,7 +107,7 @@ function runCliJson(repoRoot, args) {
 
 function writeManifest({ manifestPath, library, version, indexPath }) {
   const payload = {
-    schema_version: "1",
+    schema_version: "2",
     library,
     library_version: version,
     index_path: path.relative(path.dirname(manifestPath), indexPath).split(path.sep).join("/"),
@@ -376,6 +376,13 @@ function buildErrorRecord({ runId, profile, passIndex, tool, benchCase, startedA
     total_tokens: 0,
     answer_text: "",
     answer_citations: [],
+    first_hop_precision_at_k: Number(retrievalMeta?.first_hop_precision_at_k || 0),
+    coverage_after_2_hops: Number(retrievalMeta?.coverage_after_2_hops || 0),
+    coverage_after_3_hops: Number(retrievalMeta?.coverage_after_3_hops || 0),
+    tokens_per_required_point: 0,
+    duplicate_context_ratio: Number(retrievalMeta?.duplicate_context_ratio || 0),
+    citation_precision_line_level: Number(retrievalMeta?.citation_precision_line_level || 0),
+    abstain_when_unknown_rate: Number(retrievalMeta?.abstain_when_unknown_rate || 0),
     required_points_score: 0,
     citation_score: 0,
     forbidden_claims_penalty: 0,
@@ -440,6 +447,7 @@ async function evaluateRecord({ runId, profile, passIndex, tool, benchCase, corp
     const required = scoreRequiredPoints(answerText, benchCase.required_points || []);
     const citations = scoreCitations(answerCitations, benchCase.acceptable_citations || [], answerText);
     const forbidden = scoreForbiddenClaims(answerText, benchCase.forbidden_claims || []);
+    const tokensPerRequiredPoint = required.hits > 0 ? Number((retrievalTokens / required.hits).toFixed(4)) : 0;
 
     const comprehension = finalComprehensionScore({
       requiredPointsScore: required.score,
@@ -469,6 +477,13 @@ async function evaluateRecord({ runId, profile, passIndex, tool, benchCase, corp
       total_tokens: retrievalTokens + promptTokens + completionTokens,
       answer_text: answerText,
       answer_citations: answerCitations,
+      first_hop_precision_at_k: Number(retrievalMeta.first_hop_precision_at_k || 0),
+      coverage_after_2_hops: Number(retrievalMeta.coverage_after_2_hops || 0),
+      coverage_after_3_hops: Number(retrievalMeta.coverage_after_3_hops || 0),
+      tokens_per_required_point: tokensPerRequiredPoint,
+      duplicate_context_ratio: Number(retrievalMeta.duplicate_context_ratio || 0),
+      citation_precision_line_level: Number(retrievalMeta.citation_precision_line_level || 0),
+      abstain_when_unknown_rate: Number(retrievalMeta.abstain_when_unknown_rate || 0),
       required_points_score: required.score,
       citation_score: citations.score,
       forbidden_claims_penalty: forbidden.penalty,

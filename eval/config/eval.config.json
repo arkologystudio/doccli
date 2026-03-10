@@ -5,6 +5,10 @@
       "cases_file": "eval/cases/smoke.jsonl",
       "passes": 1
     },
+    "iterative-smoke": {
+      "cases_file": "eval/cases/iterative-smoke.jsonl",
+      "passes": 1
+    },
     "full": {
       "cases_file": "eval/cases/full.jsonl",
       "passes": 2
