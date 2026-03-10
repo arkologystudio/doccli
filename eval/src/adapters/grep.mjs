@@ -34,6 +34,53 @@ function parseRipgrepLines(stdout) {
   return parsed;
 }
 
+function runSearch({ cwd, pattern }) {
+  const rgResult = spawnSync(
+    "rg",
+    ["-n", "-i", "--no-heading", "--max-count", "60", "-e", pattern, "."],
+    {
+      cwd,
+      encoding: "utf8"
+    }
+  );
+
+  if (!rgResult.error && (rgResult.status === 0 || rgResult.status === 1)) {
+    return rgResult;
+  }
+
+  const grepResult = spawnSync(
+    "grep",
+    ["-R", "-n", "-i", "-E", pattern, "."],
+    {
+      cwd,
+      encoding: "utf8"
+    }
+  );
+
+  return grepResult;
+}
+
+function findFirstDocFileRecursive(rootDir) {
+  const stack = [rootDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(fullPath);
+        continue;
+      }
+      if (entry.isFile() && /\.(md|markdown|txt)$/i.test(entry.name)) {
+        return fullPath;
+      }
+    }
+  }
+  return "";
+}
+
 function snippetForHit(rootDir, hit, windowLines = 5) {
   const absolute = path.resolve(rootDir, hit.file);
   if (!fs.existsSync(absolute)) {
@@ -58,14 +105,7 @@ export function retrieveWithGrep({ benchCase, corpus, limits }) {
   const pattern = buildPattern(benchCase.question);
 
   const started = performance.now();
-  const rgResult = spawnSync(
-    "rg",
-    ["-n", "-i", "--no-heading", "--max-count", "60", "-e", pattern, "."],
-    {
-      cwd: corpus.docs_dir,
-      encoding: "utf8"
-    }
-  );
+  const rgResult = runSearch({ cwd: corpus.docs_dir, pattern });
   const ended = performance.now();
 
   const stdout = String(rgResult.stdout || "");
@@ -90,15 +130,11 @@ export function retrieveWithGrep({ benchCase, corpus, limits }) {
   }
 
   if (blocks.length === 0) {
-    const files = fs
-      .readdirSync(corpus.docs_dir, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && /\.(md|markdown|txt)$/i.test(entry.name))
-      .slice(0, 1);
-
-    for (const file of files) {
-      const absolute = path.join(corpus.docs_dir, file.name);
-      const content = fs.readFileSync(absolute, "utf8").split("\n").slice(0, 12).join("\n");
-      blocks.push({ text: content, citation: file.name });
+    const firstDoc = findFirstDocFileRecursive(corpus.docs_dir);
+    if (firstDoc) {
+      const content = fs.readFileSync(firstDoc, "utf8").split("\n").slice(0, 12).join("\n");
+      const relative = path.relative(corpus.docs_dir, firstDoc).split(path.sep).join("/");
+      blocks.push({ text: content, citation: relative });
     }
   }
 

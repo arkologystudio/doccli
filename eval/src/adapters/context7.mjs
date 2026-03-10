@@ -102,7 +102,7 @@ export function normalizeContext7Payload(payload) {
 
 function runContext7Command({ command, query, corpusPath, maxBlocks }) {
   const started = performance.now();
-  const result = spawnSync("zsh", ["-lc", command], {
+  let result = spawnSync("zsh", ["-lc", command], {
     encoding: "utf8",
     env: {
       ...process.env,
@@ -111,6 +111,18 @@ function runContext7Command({ command, query, corpusPath, maxBlocks }) {
       CONTEXT7_MAX_BLOCKS: String(maxBlocks)
     }
   });
+
+  if (result.error && result.error.code === "ENOENT") {
+    result = spawnSync("/bin/sh", ["-lc", command], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CONTEXT7_QUERY: query,
+        CONTEXT7_CORPUS_PATH: corpusPath,
+        CONTEXT7_MAX_BLOCKS: String(maxBlocks)
+      }
+    });
+  }
   const ended = performance.now();
 
   const stdout = String(result.stdout || "").trim();
