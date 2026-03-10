@@ -1,6 +1,6 @@
 {
   "name": "trail-docs",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Local-first CLI for agent-friendly documentation navigation and pre-install library research",
   "type": "module",
   "bin": {
@@ -8,7 +8,10 @@
   },
   "files": [
     "src",
-    "docs/*.md",
+    "docs/agent-integration.md",
+    "docs/best-practices.md",
+    "docs/json_output_schema.md",
+    "docs/quick-start.md",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

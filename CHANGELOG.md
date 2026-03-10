@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-10
+
 ### Added
 - `discover` command for multi-provider library discovery (`catalog`, `npm`, `github`).
 - `fetch` command for pre-install documentation acquisition and local snapshotting.
